@@ -151,10 +151,9 @@ Open your terminal inside this project folder and run:
 git add .
 git commit -m "TuneStream: Music Streaming & Play Queue Manager in C"
 git branch -M main
-git remote add origin https://github.com/YOUR_USERNAME/tunestream-music-player.git
+git remote add origin https://github.com/NeevJain-07/DSAPROJECT.git
 git push -u origin main
 ```
-*(Replace `YOUR_USERNAME` with your actual GitHub username).*
 
 ### Step 3: Enable GitHub Pages
 1. Go to your repository on GitHub &rarr; click **Settings** (top tab).
@@ -167,7 +166,7 @@ git push -u origin main
 ### Step 4: Your App is Live!
 In ~30 seconds, your project will be live at:
 ```
-https://YOUR_USERNAME.github.io/tunestream-music-player/
+https://neevjain-07.github.io/DSAPROJECT/
 ```
 
 ---

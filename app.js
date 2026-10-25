@@ -384,7 +384,11 @@
     // Push current song onto LIFO History Stack before moving
     historyStack.push(playlist.current.song);
 
-    if (playlist.current.next) {
+    if (isShuffle && playlist.count > 1) {
+      const allNodes = playlist.toArray();
+      const otherNodes = allNodes.filter(n => n !== playlist.current);
+      playlist.current = otherNodes[Math.floor(Math.random() * otherNodes.length)];
+    } else if (playlist.current.next) {
       playlist.current = playlist.current.next;
     } else if (isRepeat) {
       // Loop back to DLL head
