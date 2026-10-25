@@ -1,0 +1,12 @@
+# C Build artifacts
+*.o
+*.obj
+*.exe
+vfs
+test_runner
+
+# Editor & OS files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
