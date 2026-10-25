@@ -920,16 +920,6 @@
     renderAll();
   });
 
-  // Guide Modal
-  const modalGuide = document.getElementById('modal-guide');
-  const btnGuideModal = document.getElementById('btn-guide-modal');
-  const btnCloseGuideModal = document.getElementById('btn-close-guide-modal');
-  const btnCloseGuideFooter = document.getElementById('btn-close-guide-footer');
-
-  btnGuideModal.addEventListener('click', () => modalGuide.classList.add('show'));
-  btnCloseGuideModal.addEventListener('click', () => modalGuide.classList.remove('show'));
-  btnCloseGuideFooter.addEventListener('click', () => modalGuide.classList.remove('show'));
-
   // Copy C Code Button
   document.getElementById('btn-copy-c-code').addEventListener('click', () => {
     const code = document.getElementById('c-code-display').textContent;

@@ -53,20 +53,12 @@
 
       <!-- Header Actions -->
       <div class="header-actions">
-        <button class="btn btn-secondary" id="btn-add-song-modal" title="Add a new custom song">
+        <button class="btn btn-primary" id="btn-add-song-modal" title="Add a new custom song">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <line x1="12" y1="5" x2="12" y2="19"></line>
             <line x1="5" y1="12" x2="19" y2="12"></line>
           </svg>
           Add Song
-        </button>
-        <button class="btn btn-primary" id="btn-guide-modal" title="How to Run C Code & Deploy to GitHub Pages">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="12" cy="12" r="10"></circle>
-            <line x1="12" y1="16" x2="12" y2="12"></line>
-            <line x1="12" y1="8" x2="12.01" y2="8"></line>
-          </svg>
-          DSA & Deployment Guide
         </button>
       </div>
     </header>
@@ -462,78 +454,8 @@ typedef struct BSTNode {
       </div>
     </div>
 
-    <!-- 2. Project Guide & GitHub Pages Deployment Modal -->
-    <div class="modal-backdrop" id="modal-guide" role="dialog" aria-modal="true" aria-hidden="true">
-      <div class="modal-box modal-box-large">
-        <div class="modal-header">
-          <div class="modal-title-group">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
-              <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
-            </svg>
-            <span>Project Overview & GitHub Pages Deployment Guide</span>
-          </div>
-          <button class="modal-close-btn" id="btn-close-guide-modal">&times;</button>
-        </div>
-        <div class="modal-body guide-content custom-scrollbar">
-          <h3>🎓 College Presentation & Viva Highlights</h3>
-          <p><strong>TuneStream</strong> is the textbook real-world application of linear and hierarchical Data Structures in <strong>C</strong>:</p>
-          <ol>
-            <li><strong>Doubly Linked List (Playlist)</strong>: Bi-directional node pointers (<code>prev</code> & <code>next</code>) enable $O(1)$ Next and Previous track navigation and $O(1)$ track insertions/deletions.</li>
-            <li><strong>FIFO Queue (Up Next)</strong>: User-queued tracks play first in First-In, First-Out order.</li>
-            <li><strong>LIFO Stack (Recently Played)</strong>: Stores finished tracks. Going back pops the top of the stack.</li>
-            <li><strong>Binary Search Tree (Library Search)</strong>: Organizes the full catalog alphabetically for rapid $O(\log N)$ search queries.</li>
-          </ol>
-
-          <h3>🚀 How to Deploy Live to GitHub Pages (2 Minutes)</h3>
-          <div class="guide-steps">
-            <div class="step-card">
-              <span class="step-num">1</span>
-              <div>
-                <strong>Create a GitHub Repository</strong>
-                <p>Go to <a href="https://github.com/new" target="_blank" rel="noopener">github.com/new</a>, name it <code>tunestream-c-dsa</code>, and keep it Public.</p>
-              </div>
-            </div>
-            <div class="step-card">
-              <span class="step-num">2</span>
-              <div>
-                <strong>Push Code from your Computer</strong>
-                <pre class="terminal-snippet">git add .
-git commit -m "TuneStream: C Music Player and Data Structures Web App"
-git branch -M main
-git remote add origin https://github.com/NeevJain-07/DSAPROJECT.git
-git push -u origin main</pre>
-              </div>
-            </div>
-            <div class="step-card">
-              <span class="step-num">3</span>
-              <div>
-                <strong>Enable GitHub Pages</strong>
-                <p>On your GitHub repo, click <strong>Settings</strong> &rarr; <strong>Pages</strong> &rarr; under <em>Build and deployment</em>, set Source to <strong>Deploy from a branch</strong> &rarr; select <strong>main</strong> branch and <strong>/(root)</strong> &rarr; click <strong>Save</strong>.</p>
-              </div>
-            </div>
-            <div class="step-card">
-              <span class="step-num">4</span>
-              <div>
-                <strong>Your Site is Live!</strong>
-                <p>Within 30 seconds, your project is live at: <code>https://neevjain-07.github.io/DSAPROJECT/</code>!</p>
-              </div>
-            </div>
-          </div>
-
-          <h3>💻 How to Run the Pure C Version on Your Computer</h3>
-          <pre class="terminal-snippet">cd c_src
-make run     # Run interactive CLI music player in C
-make check   # Run automated Data Structure unit test suite</pre>
-        </div>
-        <div class="modal-footer">
-          <button class="btn btn-primary" id="btn-close-guide-footer">Got it!</button>
-        </div>
-      </div>
-    </div>
-
   </div>
 
-  <script src="app.js?v=3"></script>
+  <script src="app.js?v=4"></script>
 </body>
 </html>
