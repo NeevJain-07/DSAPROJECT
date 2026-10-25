@@ -3,178 +3,259 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Virtual File System | Data Structures in C Interactive Web App</title>
-  <meta name="description" content="An interactive Virtual File System built with C Data Structures (N-ary Tree, Stack, Queue) featuring a live Unix shell, graphical explorer, and real-time pointer visualizer.">
-  
+  <title>TuneStream | Music Player & Data Structures in C Web App</title>
+  <meta name="description" content="An interactive music streaming and queue manager built on classic C Data Structures: Doubly Linked List, FIFO Queue, LIFO Stack, and Binary Search Tree.">
+
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-  
+
   <link rel="stylesheet" href="style.css">
 </head>
 <body class="theme-dark">
   <div class="app-wrapper">
-    <!-- Top Navigation Bar -->
+
+    <!-- Top Navigation Header -->
     <header class="app-header" id="app-header">
       <div class="header-branding">
         <div class="logo-icon">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
-            <polyline points="12 11 12 17 15 14"></polyline>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M9 18V5l12-2v13"></path>
+            <circle cx="6" cy="18" r="3"></circle>
+            <circle cx="18" cy="16" r="3"></circle>
           </svg>
         </div>
         <div class="header-titles">
-          <h1 class="project-title" id="main-heading">C Virtual File System</h1>
-          <span class="project-subtitle">Data Structures Project &bull; Tree, Stack, Queue</span>
+          <h1 class="project-title" id="main-heading">TuneStream</h1>
+          <span class="project-subtitle">Music Streaming & Play Queue Manager &bull; C Data Structures</span>
         </div>
       </div>
 
-      <div class="header-stats">
-        <div class="stat-badge" title="Total Allocated Dynamic Tree Nodes">
-          <span class="stat-dot"></span>
-          <span class="stat-label">Active Nodes:</span>
-          <span class="stat-value" id="stat-nodes-count">8</span>
+      <!-- Active DSA Badges -->
+      <div class="header-badges">
+        <div class="dsa-badge" title="Active Playlist: Doubly Linked List">
+          <span class="badge-dot dot-emerald"></span>
+          <span class="badge-label">Playlist:</span>
+          <span class="badge-val" id="badge-playlist-count">5 Nodes (DLL)</span>
         </div>
-        <div class="stat-badge" title="Estimated Memory Footprint in C">
-          <span class="stat-label">Memory:</span>
-          <span class="stat-value" id="stat-memory-size">512 B</span>
+        <div class="dsa-badge" title="Up Next: FIFO Queue">
+          <span class="badge-dot dot-cyan"></span>
+          <span class="badge-label">Queue:</span>
+          <span class="badge-val" id="badge-queue-count">1 Enqueued (FIFO)</span>
+        </div>
+        <div class="dsa-badge" title="History: LIFO Stack">
+          <span class="badge-dot dot-purple"></span>
+          <span class="badge-label">History:</span>
+          <span class="badge-val" id="badge-history-count">0 Stacked (LIFO)</span>
         </div>
       </div>
 
+      <!-- Header Actions -->
       <div class="header-actions">
-        <button class="btn btn-secondary" id="btn-quick-sample" title="Populate realistic demo folders and files">
+        <button class="btn btn-secondary" id="btn-add-song-modal" title="Add a new custom song">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <polyline points="23 4 23 10 17 10"></polyline>
-            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
           </svg>
-          Load Demo Data
+          Add Song
         </button>
-        <button class="btn btn-primary" id="btn-guide-modal" title="Instructions & How to Deploy to GitHub Pages">
+        <button class="btn btn-primary" id="btn-guide-modal" title="How to Run C Code & Deploy to GitHub Pages">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <circle cx="12" cy="12" r="10"></circle>
             <line x1="12" y1="16" x2="12" y2="12"></line>
             <line x1="12" y1="8" x2="12.01" y2="8"></line>
           </svg>
-          Project & Deployment Guide
+          DSA & Deployment Guide
         </button>
       </div>
     </header>
 
     <!-- Main Workspace Grid -->
     <main class="app-main-grid" id="main-content">
-      
-      <!-- LEFT PANE: Graphical File Explorer -->
-      <section class="pane explorer-pane" id="explorer-section" aria-label="File Explorer">
+
+      <!-- LEFT COLUMN: Music Catalog & BST Search -->
+      <section class="pane catalog-pane" id="catalog-section" aria-label="Music Catalog">
         <div class="pane-header">
           <div class="pane-title-group">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
-              <polyline points="9 22 9 12 15 12 15 22"></polyline>
+              <circle cx="12" cy="12" r="10"></circle>
+              <polygon points="10 8 16 12 10 16 10 8"></polygon>
             </svg>
-            <h2>File Explorer</h2>
+            <h2>Song Catalog</h2>
           </div>
-          <div class="pane-actions">
-            <button class="icon-btn" id="btn-gui-mkdir" title="Create Folder (mkdir)">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
-                <line x1="12" y1="11" x2="12" y2="17"></line>
-                <line x1="9" y1="14" x2="15" y2="14"></line>
-              </svg>
-            </button>
-            <button class="icon-btn" id="btn-gui-touch" title="Create File (touch)">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                <polyline points="14 2 14 8 20 8"></polyline>
-                <line x1="12" y1="18" x2="12" y2="12"></line>
-                <line x1="9" y1="15" x2="15" y2="15"></line>
-              </svg>
-            </button>
-            <button class="icon-btn" id="btn-gui-up" title="Go to Parent Directory (cd ..)">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <line x1="12" y1="19" x2="12" y2="5"></line>
-                <polyline points="5 12 12 5 19 12"></polyline>
-              </svg>
-            </button>
+          <span class="pill-tag" id="catalog-total-badge">8 Tracks</span>
+        </div>
+
+        <!-- Search Bar (BST Powered) -->
+        <div class="catalog-search-box">
+          <div class="search-input-wrapper">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="search-icon">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <input 
+              type="text" 
+              id="search-input" 
+              class="search-input" 
+              placeholder="Search library (BST O(log N))..." 
+              autocomplete="off"
+            >
+            <button class="clear-search-btn" id="btn-clear-search" style="display:none;">&times;</button>
+          </div>
+          <div class="search-bst-info" id="search-bst-feedback">
+            <span>Library indexed via Binary Search Tree</span>
           </div>
         </div>
 
-        <!-- Breadcrumb Bar -->
-        <nav class="breadcrumb-container" id="breadcrumb-bar" aria-label="Directory Breadcrumbs">
-          <div class="breadcrumb-items" id="breadcrumb-items">
-            <!-- Dynamically populated -->
-          </div>
-        </nav>
-
-        <!-- Current Folder Contents -->
-        <div class="explorer-content custom-scrollbar" id="explorer-files-container">
-          <!-- Dynamically populated files/folders -->
-        </div>
-
-        <!-- Explorer Footer Info -->
-        <div class="explorer-footer">
-          <span id="explorer-item-count">0 items</span>
-          <span id="explorer-current-path-text">/</span>
+        <!-- Catalog List -->
+        <div class="catalog-list custom-scrollbar" id="catalog-list-container">
+          <!-- Dynamically populated from BST Catalog -->
         </div>
       </section>
 
-      <!-- CENTER PANE: Interactive Terminal / Console -->
-      <section class="pane terminal-pane" id="terminal-section" aria-label="Interactive Terminal Shell">
-        <div class="pane-header terminal-header">
-          <div class="pane-title-group">
-            <div class="terminal-dots">
-              <span class="dot dot-red"></span>
-              <span class="dot dot-yellow"></span>
-              <span class="dot dot-green"></span>
+      <!-- CENTER COLUMN: Player & Active Playlist (Doubly Linked List) -->
+      <section class="pane player-pane" id="player-section" aria-label="Music Player and Active Playlist">
+        
+        <!-- Now Playing Hero Card -->
+        <div class="now-playing-card">
+          <div class="vinyl-art-wrapper">
+            <div class="vinyl-disk" id="vinyl-disk">
+              <div class="vinyl-grooves"></div>
+              <div class="vinyl-center-label" id="vinyl-art-label">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14.5v-9l6 4.5-6 4.5z"/>
+                </svg>
+              </div>
             </div>
-            <h2>VFS Shell Simulator (C Engine)</h2>
+            <!-- Animated Equalizer Bars -->
+            <div class="equalizer-waves" id="equalizer-waves">
+              <span class="eq-bar"></span>
+              <span class="eq-bar"></span>
+              <span class="eq-bar"></span>
+              <span class="eq-bar"></span>
+              <span class="eq-bar"></span>
+            </div>
           </div>
-          <div class="terminal-header-tools">
-            <button class="terminal-small-btn" id="btn-term-clear" title="Clear terminal screen">clear</button>
-            <button class="terminal-small-btn" id="btn-term-help" title="View available commands">help</button>
+
+          <div class="track-meta">
+            <div class="track-status-pill" id="track-status-pill">NOW PLAYING &bull; DLL CURRENT NODE</div>
+            <h2 class="track-title" id="now-playing-title">Blinding Lights</h2>
+            <p class="track-artist" id="now-playing-artist">The Weeknd</p>
+            <div class="track-tags">
+              <span class="tag-pill" id="now-playing-genre">Synthwave</span>
+              <span class="tag-pill" id="now-playing-node-id">Node: &SongNode@1</span>
+            </div>
           </div>
         </div>
 
-        <!-- Terminal Output Window -->
-        <div class="terminal-output custom-scrollbar" id="terminal-output" role="log">
-          <!-- Terminal logs will appear here -->
+        <!-- Audio Progress & Controls -->
+        <div class="player-controls-container">
+          <!-- Progress Bar -->
+          <div class="progress-row">
+            <span class="time-text" id="time-current">0:00</span>
+            <div class="progress-bar-track" id="progress-bar-track">
+              <div class="progress-bar-fill" id="progress-bar-fill" style="width: 0%;"></div>
+            </div>
+            <span class="time-text" id="time-total">3:20</span>
+          </div>
+
+          <!-- Buttons Row -->
+          <div class="controls-buttons-row">
+            <button class="ctrl-btn" id="btn-shuffle" title="Toggle Shuffle">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="16 3 21 3 21 8"></polyline>
+                <line x1="4" y1="20" x2="21" y2="3"></line>
+                <polyline points="21 16 21 21 16 21"></polyline>
+                <line x1="15" y1="15" x2="21" y2="21"></line>
+                <line x1="4" y1="4" x2="9" y2="9"></line>
+              </svg>
+            </button>
+
+            <!-- Previous Song: Pops LIFO Stack or moves to DLL prev pointer -->
+            <button class="ctrl-btn ctrl-prev" id="btn-prev" title="Previous Track (Stack Pop / DLL prev)">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polygon points="19 20 9 12 19 4 19 20"></polygon>
+                <line x1="5" y1="19" x2="5" y2="5"></line>
+              </svg>
+            </button>
+
+            <!-- Play / Pause -->
+            <button class="ctrl-btn ctrl-play" id="btn-play-pause" title="Play / Pause">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" id="play-pause-icon">
+                <polygon points="5 3 19 12 5 21 5 3"></polygon>
+              </svg>
+            </button>
+
+            <!-- Next Song: Dequeues from FIFO Queue first! If empty, advances DLL next pointer -->
+            <button class="ctrl-btn ctrl-next" id="btn-next" title="Next Track (FIFO Queue -> DLL next -> Stack push)">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polygon points="5 4 15 12 5 20 5 4"></polygon>
+                <line x1="19" y1="5" x2="19" y2="19"></line>
+              </svg>
+            </button>
+
+            <button class="ctrl-btn" id="btn-repeat" title="Toggle Repeat Playlist">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="17 1 21 5 17 9"></polyline>
+                <path d="M3 11V9a4 4 0 0 1 4-4h14"></path>
+                <polyline points="7 23 3 19 7 15"></polyline>
+                <path d="M21 13v2a4 4 0 0 1-4 4H3"></path>
+              </svg>
+            </button>
+          </div>
         </div>
 
-        <!-- Quick Command Chips -->
-        <div class="quick-commands-bar" id="quick-commands-bar">
-          <span class="quick-label">Try:</span>
-          <button class="chip" data-cmd="ls -l">ls -l</button>
-          <button class="chip" data-cmd="tree">tree</button>
-          <button class="chip" data-cmd="pwd">pwd</button>
-          <button class="chip" data-cmd="mkdir project">mkdir project</button>
-          <button class="chip" data-cmd="touch hello.c int main() { return 0; }">touch hello.c</button>
-          <button class="chip" data-cmd="history">history</button>
+        <!-- Active Playlist (Doubly Linked List Header & List) -->
+        <div class="playlist-section-header">
+          <div class="pane-title-group">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="8" y1="6" x2="21" y2="6"></line>
+              <line x1="8" y1="12" x2="21" y2="12"></line>
+              <line x1="8" y1="18" x2="21" y2="18"></line>
+              <line x1="3" y1="6" x2="3.01" y2="6"></line>
+              <line x1="3" y1="12" x2="3.01" y2="12"></line>
+              <line x1="3" y1="18" x2="3.01" y2="18"></line>
+            </svg>
+            <h3>Active Playlist (Doubly Linked List)</h3>
+          </div>
+          <span class="subtext-note">Click any track to jump pointer directly</span>
         </div>
 
-        <!-- Terminal Input Line -->
-        <div class="terminal-input-row">
-          <span class="terminal-prompt-user">vfs-user@dsa-c</span>
-          <span class="terminal-prompt-colon">:</span>
-          <span class="terminal-prompt-path" id="term-prompt-path">/</span>
-          <span class="terminal-prompt-symbol">$</span>
-          <input 
-            type="text" 
-            id="terminal-input" 
-            class="terminal-input" 
-            autocomplete="off" 
-            autocorrect="off" 
-            autocapitalize="off" 
-            spellcheck="false"
-            placeholder="Type a command (e.g. ls, mkdir, touch, tree, cd, help)..."
-          >
+        <!-- Playlist Tracks Container -->
+        <div class="playlist-items-container custom-scrollbar" id="playlist-container">
+          <!-- Dynamically populated DLL nodes -->
         </div>
       </section>
 
-      <!-- RIGHT PANE: Data Structures & C Memory Visualizer -->
-      <section class="pane visualizer-pane" id="visualizer-section" aria-label="Data Structure Inspector">
-        <!-- Visualizer Navigation Tabs -->
-        <div class="tabs-header" id="visualizer-tabs">
-          <button class="tab-btn active" data-tab="tab-tree" id="tab-btn-tree">
+      <!-- RIGHT COLUMN: Real-Time Data Structures Inspector -->
+      <section class="pane inspector-pane" id="inspector-section" aria-label="Data Structures Inspector">
+        <!-- Inspector Navigation Tabs -->
+        <div class="tabs-header" id="inspector-tabs">
+          <button class="tab-btn active" data-tab="tab-dll" id="tab-btn-dll" title="Doubly Linked List">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="7 13 12 18 17 13"></polyline>
+              <polyline points="7 6 12 11 17 6"></polyline>
+            </svg>
+            DLL Playlist
+          </button>
+          <button class="tab-btn" data-tab="tab-queue" id="tab-btn-queue" title="FIFO Up Next Queue">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="3" y1="6" x2="21" y2="6"></line>
+              <line x1="3" y1="12" x2="21" y2="12"></line>
+              <line x1="3" y1="18" x2="21" y2="18"></line>
+            </svg>
+            Up Next (Queue)
+          </button>
+          <button class="tab-btn" data-tab="tab-stack" id="tab-btn-stack" title="LIFO History Stack">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
+              <polyline points="2 17 12 22 22 17"></polyline>
+              <polyline points="2 12 12 17 22 12"></polyline>
+            </svg>
+            History (Stack)
+          </button>
+          <button class="tab-btn" data-tab="tab-bst" id="tab-btn-bst" title="Binary Search Tree">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <circle cx="12" cy="5" r="3"></circle>
               <circle cx="5" cy="19" r="3"></circle>
@@ -182,112 +263,107 @@
               <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
               <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
             </svg>
-            N-ary Tree
+            BST Index
           </button>
-          <button class="tab-btn" data-tab="tab-stack" id="tab-btn-stack">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
-              <polyline points="2 17 12 22 22 17"></polyline>
-              <polyline points="2 12 12 17 22 12"></polyline>
-            </svg>
-            Path Stack
-          </button>
-          <button class="tab-btn" data-tab="tab-queue" id="tab-btn-queue">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <line x1="3" y1="6" x2="21" y2="6"></line>
-              <line x1="3" y1="12" x2="21" y2="12"></line>
-              <line x1="3" y1="18" x2="21" y2="18"></line>
-            </svg>
-            Activity Queue
-          </button>
-          <button class="tab-btn" data-tab="tab-code" id="tab-btn-code">
+          <button class="tab-btn" data-tab="tab-code" id="tab-btn-code" title="C Structs & Complexity">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <polyline points="16 18 22 12 16 6"></polyline>
               <polyline points="8 6 2 12 8 18"></polyline>
             </svg>
-            C Source Code
+            C Code
           </button>
         </div>
 
-        <!-- Tab 1: N-ary Tree Visualizer -->
-        <div class="tab-pane active custom-scrollbar" id="tab-tree">
+        <!-- Tab 1: Doubly Linked List Visualizer -->
+        <div class="tab-pane active custom-scrollbar" id="tab-dll">
           <div class="tab-info-card">
-            <div class="info-badge">Left-Child Right-Sibling Representation</div>
-            <p>Every directory node holds a <code>firstChild</code> pointer to its first sub-item, and items at the same level are connected via <code>nextSibling</code> pointers.</p>
+            <div class="info-badge">Doubly Linked List (O(1) Next/Prev)</div>
+            <p>Each node holds <code>prev</code> and <code>next</code> pointers. Skipping forward/backward takes $O(1)$ operations with zero shifting.</p>
           </div>
-          <div class="tree-visualizer-container" id="tree-canvas-wrapper">
-            <!-- Dynamic Tree Nodes Rendered Here -->
+          <div class="dll-visualizer-chain" id="dll-chain-container">
+            <!-- Dynamic DLL node cards with pointer arrows -->
           </div>
         </div>
 
-        <!-- Tab 2: Path Stack Visualizer -->
-        <div class="tab-pane custom-scrollbar" id="tab-stack">
-          <div class="tab-info-card">
-            <div class="info-badge">LIFO Stack Structure</div>
-            <p>Used to resolve current working directory (<code>pwd</code>) and backtrack backwards (<code>cd ..</code>) by pushing and popping folder pointers.</p>
-          </div>
-          <div class="stack-visualizer-container" id="stack-container">
-            <!-- Dynamic Stack Frames Rendered Here -->
-          </div>
-        </div>
-
-        <!-- Tab 3: Activity Queue Visualizer -->
+        <!-- Tab 2: FIFO Up Next Queue -->
         <div class="tab-pane custom-scrollbar" id="tab-queue">
           <div class="tab-info-card">
-            <div class="info-badge">FIFO Queue Structure</div>
-            <p>Maintains an operation log (<code>mkdir</code>, <code>touch</code>, <code>rm</code>). Enqueued at the rear, dequeued from the front when full.</p>
+            <div class="info-badge">FIFO Play Queue (First-In, First-Out)</div>
+            <p>Songs added with <em>"+ Queue"</em> play first before the playlist continues. Songs enter at <code>rear</code> and leave at <code>front</code>.</p>
           </div>
-          <div class="queue-visualizer-container" id="queue-container">
-            <!-- Dynamic Queue Elements Rendered Here -->
+          <div class="queue-list-container" id="inspector-queue-container">
+            <!-- Dynamic Queue Cards -->
           </div>
         </div>
 
-        <!-- Tab 4: C Source Code & Complexity -->
+        <!-- Tab 3: LIFO History Stack -->
+        <div class="tab-pane custom-scrollbar" id="tab-stack">
+          <div class="tab-info-card">
+            <div class="info-badge">LIFO Playback History Stack</div>
+            <p>Every finished or skipped song gets pushed onto the top of the stack. Clicking "Previous" pops the top of the stack.</p>
+          </div>
+          <div class="stack-list-container" id="inspector-stack-container">
+            <!-- Dynamic Stack Frames -->
+          </div>
+        </div>
+
+        <!-- Tab 4: BST Library Search -->
+        <div class="tab-pane custom-scrollbar" id="tab-bst">
+          <div class="tab-info-card">
+            <div class="info-badge">Binary Search Tree (O(log N) Lookup)</div>
+            <p>Songs in the library catalog are sorted alphabetically by title. In-order traversal visits tracks in sorted order.</p>
+          </div>
+          <div class="bst-diagram-container" id="inspector-bst-container">
+            <!-- Dynamic Tree Nodes -->
+          </div>
+        </div>
+
+        <!-- Tab 5: C Source Code & Complexity Analysis -->
         <div class="tab-pane custom-scrollbar" id="tab-code">
           <div class="c-code-viewer">
             <div class="code-header">
-              <span>c_src/vfs.h &mdash; Core Data Structures</span>
-              <button class="copy-code-btn" id="btn-copy-c-code" title="Copy C structs to clipboard">Copy C</button>
+              <span>c_src/music_player.h &mdash; Core Data Structures</span>
+              <button class="copy-code-btn" id="btn-copy-c-code">Copy C</button>
             </div>
-            <pre class="code-block"><code id="c-code-display">/* N-ary Tree Node (LCRS Representation) */
-typedef struct FSNode {
-    char name[64];
-    NodeType type;            /* NODE_DIR or NODE_FILE */
-    char *content;            /* File content string */
-    size_t size;              /* File size in bytes */
-    time_t created_at;
+            <pre class="code-block"><code id="c-code-display">/* 1. Doubly Linked List Node */
+typedef struct SongNode {
+    Song song;
+    struct SongNode *prev; /* O(1) Prev pointer */
+    struct SongNode *next; /* O(1) Next pointer */
+} SongNode;
 
-    struct FSNode *parent;     /* Parent directory */
-    struct FSNode *firstChild; /* First subfolder/file */
-    struct FSNode *nextSibling;/* Next item at same depth */
-} FSNode;
-
-/* Navigation Stack for 'pwd' and 'cd ..' */
-typedef struct StackNode {
-    FSNode *node;
-    struct StackNode *next;
-} StackNode;
-
-typedef struct {
-    StackNode *top;
-    int size;
-} PathStack;
-
-/* Activity Queue (FIFO) */
+/* 2. FIFO Play Queue (Up Next) */
 typedef struct QueueNode {
-    char action[128];
-    time_t timestamp;
+    Song song;
     struct QueueNode *next;
 } QueueNode;
 
 typedef struct {
-    QueueNode *front;
-    QueueNode *rear;
+    QueueNode *front; /* Dequeue target */
+    QueueNode *rear;  /* Enqueue target */
     int count;
-} ActivityQueue;</code></pre>
+} SongQueue;
+
+/* 3. LIFO History Stack */
+typedef struct StackNode {
+    Song song;
+    struct StackNode *next;
+} StackNode;
+
+typedef struct {
+    StackNode *top; /* Most recently played */
+    int count;
+} HistoryStack;
+
+/* 4. Binary Search Tree (Library Index) */
+typedef struct BSTNode {
+    Song song;
+    struct BSTNode *left;
+    struct BSTNode *right;
+} BSTNode;</code></pre>
 
             <div class="complexity-table-wrapper">
-              <h3 class="sub-heading">Time & Space Complexity Analysis</h3>
+              <h4 class="sub-heading">Time & Space Complexity Summary</h4>
               <table class="dsa-table">
                 <thead>
                   <tr>
@@ -299,40 +375,40 @@ typedef struct {
                 </thead>
                 <tbody>
                   <tr>
-                    <td><code>mkdir</code> / <code>touch</code></td>
-                    <td>N-ary Tree (Sibling Append)</td>
-                    <td>$O(K)$ children</td>
+                    <td>Next / Prev Song</td>
+                    <td>Doubly Linked List</td>
+                    <td>$O(1)$</td>
                     <td>$O(1)$</td>
                   </tr>
                   <tr>
-                    <td><code>cd &lt;dir&gt;</code></td>
-                    <td>Child Pointer Traversal</td>
-                    <td>$O(K)$ children</td>
+                    <td>Insert Song into Playlist</td>
+                    <td>Doubly Linked List</td>
+                    <td>$O(1)$</td>
                     <td>$O(1)$</td>
                   </tr>
                   <tr>
-                    <td><code>pwd</code> (Path)</td>
-                    <td>PathStack (Push & Pop)</td>
-                    <td>$O(D)$ depth</td>
-                    <td>$O(D)$</td>
+                    <td>Add to Up Next</td>
+                    <td>FIFO Queue</td>
+                    <td>$O(1)$</td>
+                    <td>$O(1)$</td>
                   </tr>
                   <tr>
-                    <td><code>tree</code> (Hierarchy)</td>
-                    <td>Pre-Order DFS Traversal</td>
-                    <td>$O(N)$ total nodes</td>
-                    <td>$O(D)$ stack</td>
+                    <td>Play Next Queued</td>
+                    <td>FIFO Queue Dequeue</td>
+                    <td>$O(1)$</td>
+                    <td>$O(1)$</td>
                   </tr>
                   <tr>
-                    <td><code>find &lt;query&gt;</code></td>
-                    <td>Recursive Tree Search (DFS)</td>
-                    <td>$O(N)$ total nodes</td>
-                    <td>$O(D)$</td>
+                    <td>Push / Pop History</td>
+                    <td>LIFO Stack</td>
+                    <td>$O(1)$</td>
+                    <td>$O(1)$</td>
                   </tr>
                   <tr>
-                    <td><code>history</code></td>
-                    <td>FIFO ActivityQueue</td>
-                    <td>$O(1)$ enqueue</td>
-                    <td>$O(M)$ capacity</td>
+                    <td>Search Song by Title</td>
+                    <td>Binary Search Tree</td>
+                    <td>$O(\log N)$</td>
+                    <td>$O(1)$</td>
                   </tr>
                 </tbody>
               </table>
@@ -345,65 +421,48 @@ typedef struct {
     </main>
 
     <!-- Modals -->
-    <!-- 1. File Viewer/Editor Modal -->
-    <div class="modal-backdrop" id="modal-file-viewer" role="dialog" aria-modal="true" aria-hidden="true">
-      <div class="modal-box">
-        <div class="modal-header">
-          <div class="modal-title-group">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-              <polyline points="14 2 14 8 20 8"></polyline>
-            </svg>
-            <span id="modal-file-name">filename.txt</span>
-          </div>
-          <button class="modal-close-btn" id="btn-close-file-modal">&times;</button>
-        </div>
-        <div class="modal-body">
-          <div class="modal-file-meta">
-            <span id="modal-file-size">0 bytes</span>
-            <span id="modal-file-created">Created: just now</span>
-          </div>
-          <textarea id="modal-file-editor" class="file-editor-area" placeholder="Write file contents here..."></textarea>
-        </div>
-        <div class="modal-footer">
-          <button class="btn btn-secondary" id="btn-cancel-edit">Cancel</button>
-          <button class="btn btn-primary" id="btn-save-file">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
-              <polyline points="17 21 17 13 7 13 7 21"></polyline>
-              <polyline points="7 3 7 8 15 8"></polyline>
-            </svg>
-            Save File (write)
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- 2. Simple Create Item Modal (GUI touch/mkdir) -->
-    <div class="modal-backdrop" id="modal-create-item" role="dialog" aria-modal="true" aria-hidden="true">
+    <!-- 1. Add Custom Song Modal -->
+    <div class="modal-backdrop" id="modal-add-song" role="dialog" aria-modal="true" aria-hidden="true">
       <div class="modal-box modal-box-small">
         <div class="modal-header">
           <div class="modal-title-group">
-            <span id="modal-create-title">Create New Directory</span>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="12" y1="8" x2="12" y2="16"></line>
+              <line x1="8" y1="12" x2="16" y2="12"></line>
+            </svg>
+            <span>Add New Song</span>
           </div>
-          <button class="modal-close-btn" id="btn-close-create-modal">&times;</button>
+          <button class="modal-close-btn" id="btn-close-add-modal">&times;</button>
         </div>
         <div class="modal-body">
-          <label for="create-item-name" class="input-label" id="create-item-label">Directory Name:</label>
-          <input type="text" id="create-item-name" class="modal-input" placeholder="e.g. documents">
-          <div id="create-file-content-group" style="display:none; margin-top: 12px;">
-            <label for="create-item-content" class="input-label">Initial Text Content (Optional):</label>
-            <textarea id="create-item-content" class="modal-input" rows="3" placeholder="Enter text here..."></textarea>
-          </div>
+          <label class="input-label" for="input-song-title">Song Title:</label>
+          <input type="text" id="input-song-title" class="modal-input" placeholder="e.g. Midnight City">
+
+          <label class="input-label" for="input-song-artist">Artist Name:</label>
+          <input type="text" id="input-song-artist" class="modal-input" placeholder="e.g. M83">
+
+          <label class="input-label" for="input-song-genre">Genre:</label>
+          <input type="text" id="input-song-genre" class="modal-input" placeholder="e.g. Synth-pop">
+
+          <label class="input-label" for="input-song-duration">Duration (seconds):</label>
+          <input type="number" id="input-song-duration" class="modal-input" value="210" min="30" max="600">
+
+          <label class="input-label" for="select-add-dest">Add Destination:</label>
+          <select id="select-add-dest" class="modal-input">
+            <option value="playlist">Add to Active Playlist (Doubly Linked List)</option>
+            <option value="queue">Add to Up Next Queue (FIFO)</option>
+            <option value="both">Add to Library Catalog (BST)</option>
+          </select>
         </div>
         <div class="modal-footer">
-          <button class="btn btn-secondary" id="btn-cancel-create">Cancel</button>
-          <button class="btn btn-primary" id="btn-confirm-create">Create</button>
+          <button class="btn btn-secondary" id="btn-cancel-add">Cancel</button>
+          <button class="btn btn-primary" id="btn-confirm-add">Add Song</button>
         </div>
       </div>
     </div>
 
-    <!-- 3. Deployment & Project Guide Modal -->
+    <!-- 2. Project Guide & GitHub Pages Deployment Modal -->
     <div class="modal-backdrop" id="modal-guide" role="dialog" aria-modal="true" aria-hidden="true">
       <div class="modal-box modal-box-large">
         <div class="modal-header">
@@ -417,33 +476,32 @@ typedef struct {
           <button class="modal-close-btn" id="btn-close-guide-modal">&times;</button>
         </div>
         <div class="modal-body guide-content custom-scrollbar">
-          <h3>🎓 College Viva & Presentation Highlights</h3>
-          <p>This project implements an Operating System Virtual File System (VFS) in <strong>C</strong> using 3 core Data Structures:</p>
+          <h3>🎓 College Presentation & Viva Highlights</h3>
+          <p><strong>TuneStream</strong> is the textbook real-world application of linear and hierarchical Data Structures in <strong>C</strong>:</p>
           <ol>
-            <li><strong>N-ary Tree (General Tree)</strong>: Implemented using textbook <em>Left-Child Right-Sibling (LCRS)</em> representation. Each directory points to its first child and next sibling, eliminating memory waste from fixed-sized arrays.</li>
-            <li><strong>Linked List Stack</strong>: Resolves current working path (<code>pwd</code>) and backtracks directory levels (<code>cd ..</code>) via LIFO order.</li>
-            <li><strong>FIFO Queue</strong>: Maintains chronological history of system operations with bounded capacity.</li>
+            <li><strong>Doubly Linked List (Playlist)</strong>: Bi-directional node pointers (<code>prev</code> & <code>next</code>) enable $O(1)$ Next and Previous track navigation and $O(1)$ track insertions/deletions.</li>
+            <li><strong>FIFO Queue (Up Next)</strong>: User-queued tracks play first in First-In, First-Out order.</li>
+            <li><strong>LIFO Stack (Recently Played)</strong>: Stores finished tracks. Going back pops the top of the stack.</li>
+            <li><strong>Binary Search Tree (Library Search)</strong>: Organizes the full catalog alphabetically for rapid $O(\log N)$ search queries.</li>
           </ol>
 
-          <h3>🚀 How to Deploy Live on GitHub Pages (2 Minutes)</h3>
-          <p>Follow these 4 simple steps to upload your project to GitHub and make it live on the web:</p>
+          <h3>🚀 How to Deploy Live to GitHub Pages (2 Minutes)</h3>
           <div class="guide-steps">
             <div class="step-card">
               <span class="step-num">1</span>
               <div>
-                <strong>Create a new GitHub Repository</strong>
-                <p>Go to <a href="https://github.com/new" target="_blank" rel="noopener">github.com/new</a>, name it <code>c-virtual-file-system</code>, and keep it Public.</p>
+                <strong>Create a GitHub Repository</strong>
+                <p>Go to <a href="https://github.com/new" target="_blank" rel="noopener">github.com/new</a>, name it <code>tunestream-c-dsa</code>, and keep it Public.</p>
               </div>
             </div>
             <div class="step-card">
               <span class="step-num">2</span>
               <div>
-                <strong>Push the Code from your Terminal</strong>
-                <pre class="terminal-snippet">git init
-git add .
-git commit -m "Initial commit of C Data Structures VFS project"
+                <strong>Push Code from your Computer</strong>
+                <pre class="terminal-snippet">git add .
+git commit -m "TuneStream: C Music Player and Data Structures Web App"
 git branch -M main
-git remote add origin https://github.com/YOUR_USERNAME/c-virtual-file-system.git
+git remote add origin https://github.com/YOUR_USERNAME/tunestream-c-dsa.git
 git push -u origin main</pre>
               </div>
             </div>
@@ -451,27 +509,22 @@ git push -u origin main</pre>
               <span class="step-num">3</span>
               <div>
                 <strong>Enable GitHub Pages</strong>
-                <p>On your GitHub repo, go to <strong>Settings</strong> &rarr; <strong>Pages</strong> (on left sidebar) &rarr; under <em>Build and deployment</em>, set Source to <strong>Deploy from a branch</strong> &rarr; select <strong>main</strong> branch and <strong>/(root)</strong> folder &rarr; click <strong>Save</strong>.</p>
+                <p>On your GitHub repo, click <strong>Settings</strong> &rarr; <strong>Pages</strong> &rarr; under <em>Build and deployment</em>, set Source to <strong>Deploy from a branch</strong> &rarr; select <strong>main</strong> branch and <strong>/(root)</strong> &rarr; click <strong>Save</strong>.</p>
               </div>
             </div>
             <div class="step-card">
               <span class="step-num">4</span>
               <div>
-                <strong>Your Project is Live!</strong>
-                <p>In ~30 seconds, your site will be hosted live at: <code>https://YOUR_USERNAME.github.io/c-virtual-file-system/</code>!</p>
+                <strong>Your Site is Live!</strong>
+                <p>Within 30 seconds, your project is live at: <code>https://YOUR_USERNAME.github.io/tunestream-c-dsa/</code>!</p>
               </div>
             </div>
           </div>
 
-          <h3>💻 How to Run the Pure C Version on your Computer</h3>
-          <pre class="terminal-snippet"># Move into the C source folder
-cd c_src
-
-# Compile and run with GCC
-make run
-
-# Run automated Data Structure unit tests
-make check</pre>
+          <h3>💻 How to Run the Pure C Version on Your Computer</h3>
+          <pre class="terminal-snippet">cd c_src
+make run     # Run interactive CLI music player in C
+make check   # Run automated Data Structure unit test suite</pre>
         </div>
         <div class="modal-footer">
           <button class="btn btn-primary" id="btn-close-guide-footer">Got it!</button>
@@ -481,6 +534,6 @@ make check</pre>
 
   </div>
 
-  <script src="app.js?v=2"></script>
+  <script src="app.js?v=3"></script>
 </body>
 </html>

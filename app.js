@@ -1,1073 +1,932 @@
 /**
- * Virtual File System (VFS) - Data Structures Web Simulation
- * Replicating the C core (N-ary Tree with LCRS representation, Stack, and FIFO Queue).
+ * TuneStream - Music Streaming & Play Queue Manager
+ * Direct browser simulation of C Data Structures:
+ * 1. Doubly Linked List (Playlist with prev/next pointers)
+ * 2. FIFO Queue ("Up Next" Play Queue)
+ * 3. LIFO Stack ("Recently Played" History)
+ * 4. Binary Search Tree (Library Search Index)
  */
 
 (function () {
   'use strict';
 
   // =========================================================================
-  // DATA STRUCTURE DEFINITIONS (Mirroring C Structs in vfs.h)
+  // 1. DATA STRUCTURE DEFINITIONS (Mirroring C Structs in music_player.h)
   // =========================================================================
 
-  let nodeCounter = 0;
-
-  class FSNode {
-    /**
-     * @param {string} name 
-     * @param {'dir' | 'file'} type 
-     * @param {FSNode | null} parent 
-     */
-    constructor(name, type, parent = null) {
-      this.id = ++nodeCounter;
-      this.name = name;
-      this.type = type; // 'dir' or 'file'
-      this.content = type === 'file' ? '' : null;
-      this.size = 0;
-      this.createdAt = new Date();
-
-      // Pointers (Left-Child Right-Sibling representation)
-      this.parent = parent;
-      this.firstChild = null;
-      this.nextSibling = null;
+  class Song {
+    constructor(id, title, artist, durationSec, genre, freq = 440) {
+      this.id = id;
+      this.title = title;
+      this.artist = artist;
+      this.durationSec = durationSec;
+      this.genre = genre;
+      this.freq = freq; // Base frequency for Web Audio synth
     }
   }
 
-  // Linked-List Stack Node
-  class StackNode {
-    constructor(node, next = null) {
-      this.node = node;
-      this.next = next;
+  // Doubly Linked List Node
+  class SongNode {
+    constructor(song) {
+      this.song = song;
+      this.prev = null; // Pointer to previous track
+      this.next = null; // Pointer to next track
     }
   }
 
-  class PathStack {
+  // Doubly Linked List (Active Playlist)
+  class Playlist {
     constructor() {
-      this.top = null;
-      this.size = 0;
+      this.head = null;
+      this.tail = null;
+      this.current = null;
+      this.count = 0;
     }
 
-    push(node) {
-      this.top = new StackNode(node, this.top);
-      this.size++;
+    insertEnd(song) {
+      const newNode = new SongNode(song);
+      if (!this.tail) {
+        this.head = newNode;
+        this.tail = newNode;
+        this.current = newNode;
+      } else {
+        newNode.prev = this.tail;
+        this.tail.next = newNode;
+        this.tail = newNode;
+      }
+      this.count++;
+      return newNode;
     }
 
-    pop() {
-      if (!this.top) return null;
-      const popped = this.top.node;
-      this.top = this.top.next;
-      this.size--;
-      return popped;
-    }
+    remove(songId) {
+      if (!this.head) return false;
+      let curr = this.head;
 
-    peek() {
-      return this.top ? this.top.node : null;
-    }
+      while (curr) {
+        if (curr.song.id === songId) {
+          // If deleting currently active song, advance first
+          if (this.current === curr) {
+            this.current = curr.next ? curr.next : curr.prev;
+          }
 
-    isEmpty() {
-      return this.size === 0;
+          if (curr.prev) {
+            curr.prev.next = curr.next;
+          } else {
+            this.head = curr.next;
+          }
+
+          if (curr.next) {
+            curr.next.prev = curr.prev;
+          } else {
+            this.tail = curr.prev;
+          }
+
+          this.count--;
+          return true;
+        }
+        curr = curr.next;
+      }
+      return false;
     }
 
     toArray() {
       const arr = [];
-      let curr = this.top;
+      let curr = this.head;
       while (curr) {
-        arr.push(curr.node);
+        arr.push(curr);
         curr = curr.next;
       }
       return arr;
     }
   }
 
-  // FIFO Queue
-  class ActivityQueue {
-    constructor(capacity = 20) {
+  // FIFO Queue ("Up Next")
+  class SongQueue {
+    constructor() {
       this.items = [];
-      this.capacity = capacity;
     }
 
-    enqueue(action) {
-      const entry = {
-        id: Date.now() + Math.random(),
-        action: action,
-        time: new Date()
-      };
-      this.items.push(entry);
-      if (this.items.length > this.capacity) {
-        this.items.shift();
-      }
+    enqueue(song) {
+      this.items.push(song);
+    }
+
+    dequeue() {
+      return this.items.length > 0 ? this.items.shift() : null;
+    }
+
+    peek() {
+      return this.items.length > 0 ? this.items[0] : null;
+    }
+
+    isEmpty() {
+      return this.items.length === 0;
     }
 
     getAll() {
       return [...this.items];
     }
+
+    get count() {
+      return this.items.length;
+    }
   }
 
-  // =========================================================================
-  // VIRTUAL FILE SYSTEM ENGINE (Matching C functions in vfs.c)
-  // =========================================================================
-
-  class VirtualFileSystem {
+  // LIFO Stack ("Recently Played" History)
+  class HistoryStack {
     constructor() {
-      this.root = new FSNode('/', 'dir', null);
-      this.current = this.root;
-      this.activityQueue = new ActivityQueue(20);
-      this.activityQueue.enqueue("Initialized Virtual File System (Root created)");
+      this.items = [];
     }
 
-    // Helper: Find child in sibling chain of parent
-    findImmediateChild(parent, name) {
-      if (!parent || parent.type !== 'dir') return null;
-      let curr = parent.firstChild;
-      while (curr) {
-        if (curr.name === name) return curr;
-        curr = curr.nextSibling;
-      }
-      return null;
+    push(song) {
+      this.items.push(song);
     }
 
-    // Helper: Append child to sibling list
-    appendChild(parent, child) {
-      child.parent = parent;
-      child.nextSibling = null;
-
-      if (!parent.firstChild) {
-        parent.firstChild = child;
-      } else {
-        let curr = parent.firstChild;
-        while (curr.nextSibling) {
-          curr = curr.nextSibling;
-        }
-        curr.nextSibling = child;
-      }
+    pop() {
+      return this.items.length > 0 ? this.items.pop() : null;
     }
 
-    // Tree Operation: mkdir
-    mkdir(name) {
-      if (!name || name.trim() === '') return { success: false, error: "Directory name cannot be empty." };
-      name = name.trim();
-
-      if (this.findImmediateChild(this.current, name)) {
-        return { success: false, error: `Directory or file '${name}' already exists.` };
-      }
-
-      const newDir = new FSNode(name, 'dir', this.current);
-      this.appendChild(this.current, newDir);
-      this.activityQueue.enqueue(`mkdir: Created directory '${name}'`);
-      return { success: true, node: newDir };
+    peek() {
+      return this.items.length > 0 ? this.items[this.items.length - 1] : null;
     }
 
-    // Tree Operation: touch
-    touch(name, initialContent = '') {
-      if (!name || name.trim() === '') return { success: false, error: "File name cannot be empty." };
-      name = name.trim();
+    isEmpty() {
+      return this.items.length === 0;
+    }
 
-      const existing = this.findImmediateChild(this.current, name);
-      if (existing) {
-        if (existing.type !== 'file') {
-          return { success: false, error: `'${name}' already exists as a directory.` };
-        }
-        existing.content = initialContent || existing.content;
-        existing.size = new TextEncoder().encode(existing.content).length;
-        return { success: true, node: existing, updated: true };
+    getAll() {
+      // Return top-first
+      return [...this.items].reverse();
+    }
+
+    get count() {
+      return this.items.length;
+    }
+  }
+
+  // Binary Search Tree (Library Catalog)
+  class BSTNode {
+    constructor(song) {
+      this.song = song;
+      this.left = null;
+      this.right = null;
+    }
+  }
+
+  class SongBST {
+    constructor() {
+      this.root = null;
+      this.totalSongs = 0;
+    }
+
+    insert(song) {
+      const newNode = new BSTNode(song);
+      if (!this.root) {
+        this.root = newNode;
+        this.totalSongs++;
+        return;
       }
 
-      const newFile = new FSNode(name, 'file', this.current);
-      newFile.content = initialContent;
-      newFile.size = new TextEncoder().encode(initialContent).length;
-      this.appendChild(this.current, newFile);
-
-      this.activityQueue.enqueue(`touch: Created file '${name}' (${newFile.size} B)`);
-      return { success: true, node: newFile };
-    }
-
-    // File Operation: write
-    write(name, newContent) {
-      const node = this.findImmediateChild(this.current, name);
-      if (!node) return { success: false, error: `File '${name}' not found.` };
-      if (node.type !== 'file') return { success: false, error: `'${name}' is a directory.` };
-
-      node.content = newContent;
-      node.size = new TextEncoder().encode(newContent).length;
-      this.activityQueue.enqueue(`write: Updated file '${name}' (${node.size} B)`);
-      return { success: true, node: node };
-    }
-
-    // File Operation: cat
-    cat(name) {
-      const node = this.findImmediateChild(this.current, name);
-      if (!node) return { success: false, error: `File '${name}' not found.` };
-      if (node.type !== 'file') return { success: false, error: `'${name}' is a directory.` };
-      return { success: true, content: node.content };
-    }
-
-    // Tree Operation: rm (recursive deletion)
-    rm(name) {
-      const parent = this.current;
-      let curr = parent.firstChild;
-      let prev = null;
-
-      while (curr) {
-        if (curr.name === name) {
-          if (!prev) {
-            parent.firstChild = curr.nextSibling;
-          } else {
-            prev.nextSibling = curr.nextSibling;
+      let curr = this.root;
+      while (true) {
+        const cmp = song.title.localeCompare(curr.song.title, undefined, { sensitivity: 'accent' });
+        if (cmp < 0) {
+          if (!curr.left) {
+            curr.left = newNode;
+            this.totalSongs++;
+            break;
           }
-          curr.nextSibling = null;
-          this.activityQueue.enqueue(`rm: Removed '${name}' (${curr.type})`);
-          return { success: true, removed: curr };
-        }
-        prev = curr;
-        curr = curr.nextSibling;
-      }
-      return { success: false, error: `No such file or directory '${name}'.` };
-    }
-
-    // Path resolution using Stack: pwd
-    pwd() {
-      if (this.current === this.root) return '/';
-
-      const stack = new PathStack();
-      let curr = this.current;
-
-      while (curr && curr !== this.root) {
-        stack.push(curr);
-        curr = curr.parent;
-      }
-
-      let path = '';
-      while (!stack.isEmpty()) {
-        const n = stack.pop();
-        path += '/' + n.name;
-      }
-      return path;
-    }
-
-    // Path resolution: cd
-    cd(path) {
-      if (!path || path === '/' || path === '~') {
-        this.current = this.root;
-        return { success: true, current: this.current };
-      }
-
-      if (path === '.') return { success: true, current: this.current };
-
-      if (path === '..') {
-        if (this.current.parent) {
-          this.current = this.current.parent;
-        }
-        return { success: true, current: this.current };
-      }
-
-      const tokens = path.split('/').filter(t => t.length > 0);
-      let target = path.startsWith('/') ? this.root : this.current;
-
-      for (const token of tokens) {
-        if (token === '.') continue;
-        if (token === '..') {
-          if (target.parent) target = target.parent;
+          curr = curr.left;
+        } else if (cmp > 0) {
+          if (!curr.right) {
+            curr.right = newNode;
+            this.totalSongs++;
+            break;
+          }
+          curr = curr.right;
         } else {
-          const child = this.findImmediateChild(target, token);
-          if (!child) {
-            return { success: false, error: `Directory '${token}' does not exist.` };
-          }
-          if (child.type !== 'dir') {
-            return { success: false, error: `'${token}' is not a directory.` };
-          }
-          target = child;
+          break; // Duplicate
         }
       }
-
-      this.current = target;
-      return { success: true, current: this.current };
     }
 
-    // List directory
-    ls() {
-      const items = [];
-      let curr = this.current.firstChild;
+    search(query) {
+      if (!query || !this.root) return { found: null, steps: [] };
+      query = query.toLowerCase();
+
+      let curr = this.root;
+      const steps = [];
+
       while (curr) {
-        items.push(curr);
-        curr = curr.nextSibling;
-      }
-      return items;
-    }
+        steps.push(curr.song.title);
+        const titleLower = curr.song.title.toLowerCase();
 
-    // Recursive search (DFS)
-    find(name) {
-      const results = [];
-      const dfs = (node, currentPath) => {
-        if (!node) return;
-        const nodePath = currentPath === '/' ? `/${node.name}` : `${currentPath}/${node.name}`;
-        if (node.name.toLowerCase().includes(name.toLowerCase())) {
-          results.push({ node, path: nodePath });
+        if (titleLower.includes(query) || titleLower === query) {
+          return { found: curr.song, steps };
         }
-        let child = node.firstChild;
-        while (child) {
-          dfs(child, node === this.root ? '' : nodePath);
-          child = child.nextSibling;
+
+        if (query.localeCompare(titleLower) < 0) {
+          curr = curr.left;
+        } else {
+          curr = curr.right;
         }
-      };
-
-      let child = this.root.firstChild;
-      while (child) {
-        dfs(child, '/');
-        child = child.nextSibling;
-      }
-      return results;
-    }
-
-    // Recursive Pre-order tree hierarchy for console
-    getTreeText() {
-      const lines = ['.'];
-      const build = (node, depth, isLast, prefix) => {
-        if (!node) return;
-        const branch = isLast ? '└── ' : '├── ';
-        lines.push(`${prefix}${branch}${node.type === 'dir' ? node.name + '/' : node.name}`);
-
-        if (node.type === 'dir' && node.firstChild) {
-          const newPrefix = prefix + (isLast ? '    ' : '│   ');
-          let child = node.firstChild;
-          while (child) {
-            const childIsLast = child.nextSibling === null;
-            build(child, depth + 1, childIsLast, newPrefix);
-            child = child.nextSibling;
-          }
-        }
-      };
-
-      let child = this.root.firstChild;
-      while (child) {
-        const isLast = child.nextSibling === null;
-        build(child, 1, isLast, '');
-        child = child.nextSibling;
       }
 
-      return lines.join('\n');
+      return { found: null, steps };
     }
 
-    // Total nodes and estimated memory footprint
-    getMetrics() {
-      let count = 0;
-      let totalSize = 0;
+    inorder() {
+      const result = [];
       const traverse = (node) => {
         if (!node) return;
-        count++;
-        totalSize += 64 + (node.size || 0); // node struct + buffer
-        let child = node.firstChild;
-        while (child) {
-          traverse(child);
-          child = child.nextSibling;
-        }
+        traverse(node.left);
+        result.push(node.song);
+        traverse(node.right);
       };
       traverse(this.root);
-      return { count, totalSize };
+      return result;
     }
   }
 
   // =========================================================================
-  // APPLICATION CONTROLLER & UI BINDINGS
+  // 2. WEB AUDIO SYNTHESIZER (Generates pleasant ambient melody)
   // =========================================================================
 
-  const vfs = new VirtualFileSystem();
-  let terminalHistory = [];
-  let historyIndex = -1;
-  let activeEditingFile = null;
+  class WebAudioPlayer {
+    constructor() {
+      this.ctx = null;
+      this.osc = null;
+      this.gain = null;
+      this.timer = null;
+    }
+
+    init() {
+      if (!this.ctx) {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (AudioCtx) {
+          this.ctx = new AudioCtx();
+        }
+      }
+    }
+
+    playTone(baseFreq = 440) {
+      this.stopTone();
+      this.init();
+      if (!this.ctx) return;
+
+      if (this.ctx.state === 'suspended') {
+        this.ctx.resume();
+      }
+
+      // Arpeggiator notes around baseFreq
+      const notes = [baseFreq, baseFreq * 1.25, baseFreq * 1.5, baseFreq * 1.33];
+      let noteIndex = 0;
+
+      const triggerNote = () => {
+        if (!this.ctx) return;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(notes[noteIndex % notes.length], this.ctx.currentTime);
+        noteIndex++;
+
+        gain.gain.setValueAtTime(0.001, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.08, this.ctx.currentTime + 0.1);
+        gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.7);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+
+        osc.start();
+        osc.stop(this.ctx.currentTime + 0.75);
+      };
+
+      triggerNote();
+      this.timer = setInterval(triggerNote, 800);
+    }
+
+    stopTone() {
+      if (this.timer) {
+        clearInterval(this.timer);
+        this.timer = null;
+      }
+    }
+  }
+
+  // =========================================================================
+  // 3. APPLICATION STATE & SAMPLE DATA
+  // =========================================================================
+
+  const playlist = new Playlist();
+  const upNextQueue = new SongQueue();
+  const historyStack = new HistoryStack();
+  const libraryBST = new SongBST();
+  const synth = new WebAudioPlayer();
+
+  let isPlaying = false;
+  let isRepeat = false;
+  let isShuffle = false;
+  let playbackSeconds = 0;
+  let playbackTimer = null;
+
+  function loadSampleCatalog() {
+    const samples = [
+      new Song(1, 'Blinding Lights', 'The Weeknd', 200, 'Synthwave', 349.23),
+      new Song(2, 'Levitating', 'Dua Lipa', 203, 'Pop', 293.66),
+      new Song(3, 'Starboy', 'The Weeknd & Daft Punk', 230, 'R&B', 440.00),
+      new Song(4, 'Shape of You', 'Ed Sheeran', 233, 'Pop', 329.63),
+      new Song(5, 'Save Your Tears', 'The Weeknd', 215, 'Synth-pop', 392.00),
+      new Song(6, 'Stay', 'The Kid LAROI & Justin Bieber', 141, 'Pop', 523.25),
+      new Song(7, 'As It Was', 'Harry Styles', 167, 'Indie Pop', 370.00),
+      new Song(8, 'Sunflower', 'Post Malone & Swae Lee', 158, 'Hip-hop', 466.16)
+    ];
+
+    // Insert into BST Library Catalog
+    samples.forEach(s => libraryBST.insert(s));
+
+    // Add initial songs to Active Playlist (Doubly Linked List)
+    for (let i = 0; i < 5; i++) {
+      playlist.insertEnd(samples[i]);
+    }
+
+    // Enqueue 1 song into FIFO Up Next queue
+    upNextQueue.enqueue(samples[5]);
+  }
+
+  // =========================================================================
+  // 4. CORE PLAYBACK ALGORITHMS (Coordinating DLL, Queue, and Stack)
+  // =========================================================================
+
+  function playNextTrack() {
+    // 1. Check if FIFO Queue has any songs
+    if (!upNextQueue.isEmpty()) {
+      const queuedSong = upNextQueue.dequeue();
+      if (playlist.current) {
+        // Push currently finished song onto LIFO history stack
+        historyStack.push(playlist.current.song);
+      }
+      // Insert into playlist at tail and set as current
+      const newNode = playlist.insertEnd(queuedSong);
+      playlist.current = newNode;
+      startPlayback();
+      renderAll();
+      return;
+    }
+
+    // 2. Standard Doubly Linked List forward traversal (current.next)
+    if (!playlist.current) {
+      playlist.current = playlist.head;
+      if (playlist.current) startPlayback();
+      renderAll();
+      return;
+    }
+
+    // Push current song onto LIFO History Stack before moving
+    historyStack.push(playlist.current.song);
+
+    if (playlist.current.next) {
+      playlist.current = playlist.current.next;
+    } else if (isRepeat) {
+      // Loop back to DLL head
+      playlist.current = playlist.head;
+    } else {
+      // End of playlist
+      pausePlayback();
+      renderAll();
+      return;
+    }
+
+    startPlayback();
+    renderAll();
+  }
+
+  function playPrevTrack() {
+    // 1. Check LIFO History Stack first
+    if (!historyStack.isEmpty()) {
+      const prevHistorySong = historyStack.pop();
+      // Find in playlist
+      let curr = playlist.head;
+      while (curr) {
+        if (curr.song.id === prevHistorySong.id) {
+          playlist.current = curr;
+          startPlayback();
+          renderAll();
+          return;
+        }
+        curr = curr.next;
+      }
+    }
+
+    // 2. Fall back to Doubly Linked List prev pointer
+    if (playlist.current && playlist.current.prev) {
+      playlist.current = playlist.current.prev;
+      startPlayback();
+      renderAll();
+    }
+  }
+
+  function togglePlayPause() {
+    if (isPlaying) {
+      pausePlayback();
+    } else {
+      startPlayback();
+    }
+    renderPlayerState();
+  }
+
+  function startPlayback() {
+    isPlaying = true;
+    playbackSeconds = 0;
+    if (playlist.current) {
+      synth.playTone(playlist.current.song.freq);
+    }
+    startProgressTimer();
+    renderPlayerState();
+  }
+
+  function pausePlayback() {
+    isPlaying = false;
+    synth.stopTone();
+    stopProgressTimer();
+    renderPlayerState();
+  }
+
+  function startProgressTimer() {
+    stopProgressTimer();
+    playbackTimer = setInterval(() => {
+      if (!playlist.current) return;
+      playbackSeconds++;
+      if (playbackSeconds >= playlist.current.song.durationSec) {
+        playNextTrack();
+      } else {
+        updateProgressBar();
+      }
+    }, 1000);
+  }
+
+  function stopProgressTimer() {
+    if (playbackTimer) {
+      clearInterval(playbackTimer);
+      playbackTimer = null;
+    }
+  }
+
+  // =========================================================================
+  // 5. UI RENDERERS
+  // =========================================================================
 
   // DOM Elements
-  const terminalOutput = document.getElementById('terminal-output');
-  const terminalInput = document.getElementById('terminal-input');
-  const termPromptPath = document.getElementById('term-prompt-path');
-  const explorerFilesContainer = document.getElementById('explorer-files-container');
-  const breadcrumbItems = document.getElementById('breadcrumb-items');
-  const explorerItemCount = document.getElementById('explorer-item-count');
-  const explorerCurrentPathText = document.getElementById('explorer-current-path-text');
-  const statNodesCount = document.getElementById('stat-nodes-count');
-  const statMemorySize = document.getElementById('stat-memory-size');
+  const nowPlayingTitle = document.getElementById('now-playing-title');
+  const nowPlayingArtist = document.getElementById('now-playing-artist');
+  const nowPlayingGenre = document.getElementById('now-playing-genre');
+  const nowPlayingNodeId = document.getElementById('now-playing-node-id');
+  const vinylDisk = document.getElementById('vinyl-disk');
+  const playPauseIcon = document.getElementById('play-pause-icon');
+  const timeCurrent = document.getElementById('time-current');
+  const timeTotal = document.getElementById('time-total');
+  const progressBarFill = document.getElementById('progress-bar-fill');
+  const progressBarTrack = document.getElementById('progress-bar-track');
 
-  // Visualizer Tab Elements
-  const treeCanvasWrapper = document.getElementById('tree-canvas-wrapper');
-  const stackContainer = document.getElementById('stack-container');
-  const queueContainer = document.getElementById('queue-container');
+  const badgePlaylistCount = document.getElementById('badge-playlist-count');
+  const badgeQueueCount = document.getElementById('badge-queue-count');
+  const badgeHistoryCount = document.getElementById('badge-history-count');
+  const catalogTotalBadge = document.getElementById('catalog-total-badge');
 
-  // Modals
-  const modalFileViewer = document.getElementById('modal-file-viewer');
-  const modalFileName = document.getElementById('modal-file-name');
-  const modalFileSize = document.getElementById('modal-file-size');
-  const modalFileCreated = document.getElementById('modal-file-created');
-  const modalFileEditor = document.getElementById('modal-file-editor');
-  const btnCloseFileModal = document.getElementById('btn-close-file-modal');
-  const btnCancelEdit = document.getElementById('btn-cancel-edit');
-  const btnSaveFile = document.getElementById('btn-save-file');
+  const catalogListContainer = document.getElementById('catalog-list-container');
+  const playlistContainer = document.getElementById('playlist-container');
+  const dllChainContainer = document.getElementById('dll-chain-container');
+  const inspectorQueueContainer = document.getElementById('inspector-queue-container');
+  const inspectorStackContainer = document.getElementById('inspector-stack-container');
+  const inspectorBstContainer = document.getElementById('inspector-bst-container');
 
-  const modalCreateItem = document.getElementById('modal-create-item');
-  const modalCreateTitle = document.getElementById('modal-create-title');
-  const createItemLabel = document.getElementById('create-item-label');
-  const createItemName = document.getElementById('create-item-name');
-  const createFileContentGroup = document.getElementById('create-file-content-group');
-  const createItemContent = document.getElementById('create-item-content');
-  const btnCloseCreateModal = document.getElementById('btn-close-create-modal');
-  const btnCancelCreate = document.getElementById('btn-cancel-create');
-  const btnConfirmCreate = document.getElementById('btn-confirm-create');
-  let pendingCreateType = 'dir';
+  const btnPlayPause = document.getElementById('btn-play-pause');
+  const btnNext = document.getElementById('btn-next');
+  const btnPrev = document.getElementById('btn-prev');
+  const btnRepeat = document.getElementById('btn-repeat');
+  const btnShuffle = document.getElementById('btn-shuffle');
 
-  const modalGuide = document.getElementById('modal-guide');
-  const btnGuideModal = document.getElementById('btn-guide-modal');
-  const btnCloseGuideModal = document.getElementById('btn-close-guide-modal');
-  const btnCloseGuideFooter = document.getElementById('btn-close-guide-footer');
-
-  // Seed sample initial data
-  function seedInitialData() {
-    vfs.mkdir('home');
-    vfs.mkdir('etc');
-    vfs.mkdir('bin');
-    vfs.touch('README.txt', 'Welcome to the C Virtual File System Project!\nThis project demonstrates an N-ary Tree, Stack, and Queue in C.');
-
-    vfs.cd('home');
-    vfs.mkdir('student');
-    vfs.cd('student');
-    vfs.touch('notes.txt', '1. Data Structures in C\n2. Tree: Left-Child Right-Sibling\n3. Stack: Path navigation\n4. Queue: Activity log');
-    vfs.mkdir('projects');
-    vfs.cd('projects');
-    vfs.touch('main.c', '#include <stdio.h>\n\nint main() {\n    printf("Hello from VFS!\\n");\n    return 0;\n}');
-    vfs.cd('/');
-  }
-
-  // =========================================================================
-  // UI RENDERERS
-  // =========================================================================
+  const searchInput = document.getElementById('search-input');
+  const btnClearSearch = document.getElementById('btn-clear-search');
+  const searchBstFeedback = document.getElementById('search-bst-feedback');
 
   function renderAll() {
-    renderExplorer();
-    renderBreadcrumbs();
-    renderVisualizerTree();
-    renderVisualizerStack();
-    renderVisualizerQueue();
-    updateHeaderStats();
-    termPromptPath.textContent = vfs.pwd();
+    renderPlayerState();
+    renderPlaylist();
+    renderCatalog();
+    renderInspectorDLL();
+    renderInspectorQueue();
+    renderInspectorStack();
+    renderInspectorBST();
+    updateBadges();
   }
 
-  function updateHeaderStats() {
-    const metrics = vfs.getMetrics();
-    statNodesCount.textContent = metrics.count;
-    statMemorySize.textContent = `${metrics.totalSize} B`;
-    explorerCurrentPathText.textContent = vfs.pwd();
+  function updateBadges() {
+    badgePlaylistCount.textContent = `${playlist.count} Nodes (DLL)`;
+    badgeQueueCount.textContent = `${upNextQueue.count} Enqueued (FIFO)`;
+    badgeHistoryCount.textContent = `${historyStack.count} Stacked (LIFO)`;
+    catalogTotalBadge.textContent = `${libraryBST.totalSongs} Tracks`;
   }
 
-  function renderBreadcrumbs() {
-    breadcrumbItems.innerHTML = '';
-    const currentPath = vfs.pwd();
+  function renderPlayerState() {
+    const curr = playlist.current ? playlist.current.song : null;
 
-    // Root breadcrumb
-    const rootItem = document.createElement('span');
-    rootItem.className = 'breadcrumb-item';
-    rootItem.textContent = '/';
-    rootItem.onclick = () => {
-      vfs.cd('/');
-      renderAll();
-    };
-    breadcrumbItems.appendChild(rootItem);
+    if (curr) {
+      nowPlayingTitle.textContent = curr.title;
+      nowPlayingArtist.textContent = curr.artist;
+      nowPlayingGenre.textContent = curr.genre;
+      nowPlayingNodeId.textContent = `DLL Node: &SongNode@${curr.id}`;
+      timeTotal.textContent = formatTime(curr.durationSec);
+    } else {
+      nowPlayingTitle.textContent = 'No Track Selected';
+      nowPlayingArtist.textContent = 'Add songs to playlist';
+      nowPlayingGenre.textContent = 'Idle';
+      nowPlayingNodeId.textContent = 'DLL: NULL';
+      timeTotal.textContent = '0:00';
+    }
 
-    if (currentPath === '/') return;
+    if (isPlaying) {
+      vinylDisk.classList.add('spinning');
+      playPauseIcon.innerHTML = `<rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect>`;
+      btnPlayPause.setAttribute('title', 'Pause');
+    } else {
+      vinylDisk.classList.remove('spinning');
+      playPauseIcon.innerHTML = `<polygon points="5 3 19 12 5 21 5 3"></polygon>`;
+      btnPlayPause.setAttribute('title', 'Play');
+    }
 
-    const parts = currentPath.split('/').filter(p => p.length > 0);
-    let accum = '';
-
-    parts.forEach((part) => {
-      accum += '/' + part;
-      const targetPath = accum;
-
-      const sep = document.createElement('span');
-      sep.className = 'breadcrumb-separator';
-      sep.textContent = '/';
-      breadcrumbItems.appendChild(sep);
-
-      const item = document.createElement('span');
-      item.className = 'breadcrumb-item';
-      item.textContent = part;
-      item.onclick = () => {
-        vfs.cd(targetPath);
-        renderAll();
-      };
-      breadcrumbItems.appendChild(item);
-    });
+    updateProgressBar();
   }
 
-  function renderExplorer() {
-    explorerFilesContainer.innerHTML = '';
-    const items = vfs.ls();
-    explorerItemCount.textContent = `${items.length} item${items.length === 1 ? '' : 's'}`;
+  function updateProgressBar() {
+    const curr = playlist.current ? playlist.current.song : null;
+    if (!curr) {
+      progressBarFill.style.width = '0%';
+      timeCurrent.textContent = '0:00';
+      return;
+    }
+    const pct = Math.min(100, (playbackSeconds / curr.durationSec) * 100);
+    progressBarFill.style.width = `${pct}%`;
+    timeCurrent.textContent = formatTime(playbackSeconds);
+  }
 
-    if (items.length === 0) {
-      explorerFilesContainer.innerHTML = `
-        <div class="explorer-empty">
-          <p>Empty Directory</p>
-          <span style="font-size:0.75rem; color:var(--text-muted);">Use <code>mkdir</code> or <code>touch</code> to create items</span>
+  // Render Center Active Playlist (Doubly Linked List)
+  function renderPlaylist() {
+    playlistContainer.innerHTML = '';
+    const nodes = playlist.toArray();
+
+    if (nodes.length === 0) {
+      playlistContainer.innerHTML = `
+        <div style="text-align:center; padding: 40px; color:var(--text-muted); font-size:0.85rem;">
+          <p>Playlist is empty</p>
+          <span style="font-size:0.75rem;">Click "+ Playlist" on any catalog track to append nodes</span>
         </div>
       `;
       return;
     }
 
-    items.forEach(node => {
-      const itemEl = document.createElement('div');
-      itemEl.className = 'explorer-item';
+    nodes.forEach((node, idx) => {
+      const isCurrent = node === playlist.current;
+      const el = document.createElement('div');
+      el.className = `playlist-item ${isCurrent ? 'is-playing' : ''}`;
 
-      const isDir = node.type === 'dir';
-      const iconSvg = isDir
-        ? `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>`
-        : `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>`;
+      const prevName = node.prev ? node.prev.song.title : 'NULL';
+      const nextName = node.next ? node.next.song.title : 'NULL';
 
-      itemEl.innerHTML = `
-        <div class="explorer-item-left">
-          <div class="item-icon ${isDir ? 'folder-icon' : 'file-icon'}">
-            ${iconSvg}
-          </div>
-          <div class="item-details">
-            <span class="item-name">${escapeHtml(node.name)}</span>
-            <span class="item-subtext">${isDir ? 'Directory' : `${node.size} bytes`}</span>
+      el.innerHTML = `
+        <div class="playlist-item-left">
+          <span class="playlist-index">${isCurrent ? '▶' : (idx + 1)}</span>
+          <div>
+            <div class="playlist-item-title">${escapeHtml(node.song.title)}</div>
+            <div class="playlist-item-artist">${escapeHtml(node.song.artist)} &bull; ${formatTime(node.song.durationSec)}</div>
           </div>
         </div>
-        <div class="explorer-item-actions">
-          <button class="item-action-btn btn-delete-item" title="Delete (rm)" data-name="${escapeHtml(node.name)}">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <polyline points="3 6 5 6 21 6"></polyline>
-              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+        <div class="playlist-item-right">
+          <span class="playlist-pointer-badge" title="Pointers: prev & next">
+            ${escapeHtml(prevName)} ◄──► ${escapeHtml(nextName)}
+          </span>
+          <button class="btn-remove-track" title="Remove node from Doubly Linked List" data-id="${node.song.id}">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
             </svg>
           </button>
         </div>
       `;
 
-      // Item click handler
-      itemEl.addEventListener('click', (e) => {
-        if (e.target.closest('.item-action-btn')) return;
-        if (isDir) {
-          vfs.cd(node.name);
-          renderAll();
-        } else {
-          openFileModal(node);
+      // Click row to jump pointer directly
+      el.addEventListener('click', (e) => {
+        if (e.target.closest('.btn-remove-track')) return;
+        if (playlist.current) {
+          historyStack.push(playlist.current.song);
         }
-      });
-
-      // Delete action handler
-      const deleteBtn = itemEl.querySelector('.btn-delete-item');
-      deleteBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        vfs.rm(node.name);
-        printTermLine(`rm: removed '${node.name}'`, 'term-info');
+        playlist.current = node;
+        startPlayback();
         renderAll();
       });
 
-      explorerFilesContainer.appendChild(itemEl);
+      // Remove button handler
+      const removeBtn = el.querySelector('.btn-remove-track');
+      removeBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        playlist.remove(node.song.id);
+        renderAll();
+      });
+
+      playlistContainer.appendChild(el);
     });
   }
 
-  // Visualizer Tab 1: N-ary Tree Nodes
-  function renderVisualizerTree() {
-    treeCanvasWrapper.innerHTML = '';
+  // Render Left Catalog (BST In-Order)
+  function renderCatalog(filterSongs = null) {
+    catalogListContainer.innerHTML = '';
+    const songs = filterSongs || libraryBST.inorder();
 
-    const nodesList = [];
-    const traverse = (node, depth) => {
-      if (!node) return;
-      nodesList.push({ node, depth });
-      let child = node.firstChild;
-      while (child) {
-        traverse(child, depth + 1);
-        child = child.nextSibling;
-      }
-    };
+    songs.forEach(song => {
+      const el = document.createElement('div');
+      el.className = 'catalog-item-card';
+      el.innerHTML = `
+        <div class="catalog-item-info">
+          <span class="catalog-item-title">${escapeHtml(song.title)}</span>
+          <span class="catalog-item-sub">${escapeHtml(song.artist)} &bull; ${formatTime(song.durationSec)}</span>
+        </div>
+        <div class="catalog-item-actions">
+          <button class="btn-mini btn-mini-queue btn-add-queue" title="Add to FIFO Up Next Queue" data-id="${song.id}">
+            + Queue
+          </button>
+          <button class="btn-mini btn-add-playlist" title="Append to Doubly Linked List Playlist" data-id="${song.id}">
+            + Playlist
+          </button>
+        </div>
+      `;
 
-    traverse(vfs.root, 0);
+      el.querySelector('.btn-add-queue').addEventListener('click', () => {
+        upNextQueue.enqueue(song);
+        renderAll();
+      });
 
-    nodesList.forEach(({ node, depth }) => {
+      el.querySelector('.btn-add-playlist').addEventListener('click', () => {
+        playlist.insertEnd(song);
+        renderAll();
+      });
+
+      catalogListContainer.appendChild(el);
+    });
+  }
+
+  // Render Right Tab 1: Doubly Linked List Visualizer
+  function renderInspectorDLL() {
+    dllChainContainer.innerHTML = '';
+    const nodes = playlist.toArray();
+
+    if (nodes.length === 0) {
+      dllChainContainer.innerHTML = '<span style="color:var(--text-muted);font-size:0.8rem;">DLL is empty</span>';
+      return;
+    }
+
+    nodes.forEach((node, idx) => {
+      const isCurrent = node === playlist.current;
       const card = document.createElement('div');
-      const isCurrentDir = node === vfs.current;
-      card.className = `tree-vnode ${node.type === 'file' ? 'type-file' : 'type-dir'} ${isCurrentDir ? 'is-current' : ''}`;
-      card.style.setProperty('--depth', depth);
+      card.className = `dll-node-card ${isCurrent ? 'is-active' : ''}`;
 
-      const firstChildName = node.firstChild ? node.firstChild.name : 'NULL';
-      const nextSiblingName = node.nextSibling ? node.nextSibling.name : 'NULL';
+      const prevStr = node.prev ? `&Node@${node.prev.song.id}` : 'NULL';
+      const nextStr = node.next ? `&Node@${node.next.song.id}` : 'NULL';
 
       card.innerHTML = `
-        <div class="tree-vnode-header">
-          <span class="tree-vnode-name">${depth === 0 ? '/' : node.name} ${isCurrentDir ? '👈 (current)' : ''}</span>
-          <span class="tree-vnode-tag">${node.type.toUpperCase()}</span>
+        <div class="dll-node-header">
+          <span>[${idx}] &SongNode@${node.song.id}: "${escapeHtml(node.song.title)}"</span>
+          <span>${isCurrent ? '👈 CURRENT' : ''}</span>
         </div>
-        <div class="tree-vnode-pointers">
-          <span>firstChild &rarr; <span class="ptr-highlight">${escapeHtml(firstChildName)}</span></span>
-          <span>nextSibling &rarr; <span class="ptr-highlight">${escapeHtml(nextSiblingName)}</span></span>
+        <div class="dll-pointers-row">
+          <span>prev &larr; <strong class="ptr-accent">${prevStr}</strong></span>
+          <span>next &rarr; <strong class="ptr-accent">${nextStr}</strong></span>
         </div>
       `;
 
-      card.onclick = () => {
-        if (node.type === 'dir') {
-          vfs.current = node;
-          renderAll();
-        } else {
-          openFileModal(node);
-        }
-      };
+      card.addEventListener('click', () => {
+        if (playlist.current) historyStack.push(playlist.current.song);
+        playlist.current = node;
+        startPlayback();
+        renderAll();
+      });
 
-      treeCanvasWrapper.appendChild(card);
+      dllChainContainer.appendChild(card);
     });
   }
 
-  // Visualizer Tab 2: Path Stack
-  function renderVisualizerStack() {
-    stackContainer.innerHTML = '';
-
-    const stack = new PathStack();
-    let curr = vfs.current;
-    while (curr) {
-      stack.push(curr);
-      curr = curr.parent;
-    }
-
-    const frames = stack.toArray();
-    if (frames.length === 0) {
-      stackContainer.innerHTML = '<span style="color:var(--text-muted);font-size:0.8rem;">Stack is empty</span>';
-      return;
-    }
-
-    frames.forEach((node, idx) => {
-      const isTop = idx === 0;
-      const el = document.createElement('div');
-      el.className = `stack-frame ${isTop ? 'stack-top' : ''}`;
-      el.innerHTML = `
-        <div>
-          <span>[${frames.length - 1 - idx}] Node: <strong>${escapeHtml(node.name)}</strong></span>
-          <span style="color:var(--text-muted);font-size:0.7rem;display:block;">ptr: &FSNode@${node.id}</span>
-        </div>
-        ${isTop ? '<span class="stack-badge-top">TOP OF STACK</span>' : ''}
-      `;
-      stackContainer.appendChild(el);
-    });
-  }
-
-  // Visualizer Tab 3: Activity Queue
-  function renderVisualizerQueue() {
-    queueContainer.innerHTML = '';
-    const items = vfs.activityQueue.getAll().slice().reverse();
+  // Render Right Tab 2: FIFO Up Next Queue
+  function renderInspectorQueue() {
+    inspectorQueueContainer.innerHTML = '';
+    const items = upNextQueue.getAll();
 
     if (items.length === 0) {
-      queueContainer.innerHTML = '<span style="color:var(--text-muted);font-size:0.8rem;">Queue is empty</span>';
+      inspectorQueueContainer.innerHTML = `
+        <div style="padding:16px; text-align:center; color:var(--text-muted); font-size:0.8rem;">
+          Queue is empty. Click "+ Queue" on any catalog track.
+        </div>
+      `;
       return;
     }
 
-    items.forEach((item, idx) => {
-      const timeStr = item.time.toTimeString().split(' ')[0];
-      const el = document.createElement('div');
-      el.className = 'queue-item-card';
-      el.innerHTML = `
+    items.forEach((song, idx) => {
+      const card = document.createElement('div');
+      card.className = 'queue-card';
+      card.innerHTML = `
         <div>
-          <span style="color:var(--accent-cyan);font-weight:600;">[${items.length - idx}]</span>
-          <span>${escapeHtml(item.action)}</span>
+          <span style="color:var(--accent-cyan); font-weight:600;">[${idx + 1}]</span>
+          <strong>${escapeHtml(song.title)}</strong> &mdash; ${escapeHtml(song.artist)}
         </div>
         <div>
-          <span class="queue-tag">${timeStr}</span>
+          ${idx === 0 ? '<span class="queue-badge-head">FRONT (Next to Play)</span>' : ''}
+          ${idx === items.length - 1 && idx !== 0 ? '<span style="font-size:0.65rem; color:var(--text-muted);">REAR</span>' : ''}
         </div>
       `;
-      queueContainer.appendChild(el);
+      inspectorQueueContainer.appendChild(card);
+    });
+  }
+
+  // Render Right Tab 3: LIFO History Stack
+  function renderInspectorStack() {
+    inspectorStackContainer.innerHTML = '';
+    const items = historyStack.getAll();
+
+    if (items.length === 0) {
+      inspectorStackContainer.innerHTML = `
+        <div style="padding:16px; text-align:center; color:var(--text-muted); font-size:0.8rem;">
+          History stack is empty. Play or skip tracks to push history.
+        </div>
+      `;
+      return;
+    }
+
+    items.forEach((song, idx) => {
+      const isTop = idx === 0;
+      const card = document.createElement('div');
+      card.className = `stack-card ${isTop ? 'is-top' : ''}`;
+      card.innerHTML = `
+        <div>
+          <span style="color:var(--accent-purple); font-weight:600;">[#${items.length - idx}]</span>
+          <strong>${escapeHtml(song.title)}</strong> &mdash; ${escapeHtml(song.artist)}
+        </div>
+        <div>
+          ${isTop ? '<span class="stack-badge-top">TOP OF STACK</span>' : ''}
+        </div>
+      `;
+      inspectorStackContainer.appendChild(card);
+    });
+  }
+
+  // Render Right Tab 4: BST Index
+  function renderInspectorBST() {
+    inspectorBstContainer.innerHTML = '';
+    const songs = libraryBST.inorder();
+
+    songs.forEach(song => {
+      const row = document.createElement('div');
+      row.className = 'bst-node-row';
+      row.innerHTML = `
+        <span><strong>${escapeHtml(song.title)}</strong></span>
+        <span style="color:var(--text-muted); font-size:0.7rem;">${escapeHtml(song.artist)} (${escapeHtml(song.genre)})</span>
+      `;
+      inspectorBstContainer.appendChild(row);
     });
   }
 
   // =========================================================================
-  // TERMINAL SHELL SIMULATOR
+  // 6. EVENT HANDLERS & SEARCH
   // =========================================================================
 
-  function printTermLine(text, className = '') {
-    const line = document.createElement('div');
-    line.className = `term-line ${className}`;
-    line.textContent = text;
-    terminalOutput.appendChild(line);
-    terminalOutput.scrollTop = terminalOutput.scrollHeight;
-  }
+  // Controls
+  btnPlayPause.addEventListener('click', togglePlayPause);
+  btnNext.addEventListener('click', playNextTrack);
+  btnPrev.addEventListener('click', playPrevTrack);
 
-  function printTermHtml(html, className = '') {
-    const line = document.createElement('div');
-    line.className = `term-line ${className}`;
-    line.innerHTML = html;
-    terminalOutput.appendChild(line);
-    terminalOutput.scrollTop = terminalOutput.scrollHeight;
-  }
+  btnRepeat.addEventListener('click', () => {
+    isRepeat = !isRepeat;
+    btnRepeat.classList.toggle('active', isRepeat);
+  });
 
-  function printWelcomeBanner() {
-    printTermHtml(`
-      <div class="term-banner">
-=================================================================
-  VIRTUAL FILE SYSTEM (VFS) - C DATA STRUCTURES ENGINE
-=================================================================
- Data Structures Active:
-  1. N-ary Tree (Left-Child Right-Sibling Pointer Hierarchy)
-  2. PathStack (LIFO Stack for 'pwd' and 'cd ..' resolution)
-  3. ActivityQueue (FIFO Queue for operation history)
-=================================================================
-Type 'help' to see all shell commands or try the quick buttons below.
-      </div>
-    `);
-  }
+  btnShuffle.addEventListener('click', () => {
+    isShuffle = !isShuffle;
+    btnShuffle.classList.toggle('active', isShuffle);
+  });
 
-  function executeCommand(rawInput) {
-    const trimmed = rawInput.trim();
-    if (!trimmed) return;
+  // Progress Scrubbing
+  progressBarTrack.addEventListener('click', (e) => {
+    if (!playlist.current) return;
+    const rect = progressBarTrack.getBoundingClientRect();
+    const clickX = e.clientX - rect.left;
+    const pct = Math.max(0, Math.min(1, clickX / rect.width));
+    playbackSeconds = Math.floor(pct * playlist.current.song.durationSec);
+    updateProgressBar();
+  });
 
-    terminalHistory.push(trimmed);
-    historyIndex = terminalHistory.length;
-
-    // Echo command
-    printTermHtml(
-      `<span class="term-prompt-inline">vfs-user@dsa-c</span>:<span class="term-path-inline">${escapeHtml(vfs.pwd())}</span>$ <span class="term-cmd-entry">${escapeHtml(trimmed)}</span>`
-    );
-
-    const parts = trimmed.match(/(?:[^\s"]+|"[^"]*")+/g) || [];
-    const cleanParts = parts.map(p => p.replace(/^"|"$/g, ''));
-    const cmd = cleanParts[0].toLowerCase();
-    const args = cleanParts.slice(1);
-
-    switch (cmd) {
-      case 'help':
-        printTermHtml(`
-<span class="term-info">Available Commands:</span>
-  <strong>ls [-l]</strong>                List files and directories
-  <strong>cd &lt;path&gt;</strong>              Change directory ('..', '/', 'folder')
-  <strong>pwd</strong>                    Print working directory (via PathStack)
-  <strong>mkdir &lt;name&gt;</strong>           Create a directory
-  <strong>touch &lt;name&gt; [text]</strong>    Create a file with optional content
-  <strong>cat &lt;name&gt;</strong>             Read file content
-  <strong>write &lt;name&gt; &lt;text&gt;</strong>    Update file content
-  <strong>rm &lt;name&gt;</strong>              Delete file or directory recursively
-  <strong>tree</strong>                   Visual ASCII tree hierarchy (DFS)
-  <strong>find &lt;query&gt;</strong>            Search file system recursively (DFS)
-  <strong>history</strong>                Show recent operations (ActivityQueue)
-  <strong>clear</strong>                  Clear the terminal screen
-  <strong>help</strong>                   Show this help menu
-        `);
-        break;
-
-      case 'clear':
-        terminalOutput.innerHTML = '';
-        break;
-
-      case 'pwd':
-        printTermLine(vfs.pwd(), 'term-success');
-        break;
-
-      case 'ls': {
-        const isDetailed = args.includes('-l');
-        const items = vfs.ls();
-        if (items.length === 0) {
-          printTermLine('(empty directory)', 'term-info');
-        } else if (isDetailed) {
-          items.forEach(item => {
-            const timeStr = item.createdAt.toLocaleDateString() + ' ' + item.createdAt.toLocaleTimeString();
-            const tag = item.type === 'dir' ? '[DIR] ' : '[FILE]';
-            printTermLine(`${tag.padEnd(7)} ${item.name.padEnd(16)} ${(item.size + ' B').padStart(8)}  ${timeStr}`);
-          });
-        } else {
-          const listStr = items.map(item => item.type === 'dir' ? item.name + '/' : item.name).join('   ');
-          printTermLine(listStr, 'term-success');
-        }
-        break;
-      }
-
-      case 'cd': {
-        const path = args[0] || '/';
-        const res = vfs.cd(path);
-        if (!res.success) {
-          printTermLine(`cd: ${res.error}`, 'term-error');
-        }
-        break;
-      }
-
-      case 'mkdir': {
-        if (args.length === 0) {
-          printTermLine('Usage: mkdir <directory_name>', 'term-error');
-        } else {
-          const res = vfs.mkdir(args[0]);
-          if (!res.success) {
-            printTermLine(`mkdir: ${res.error}`, 'term-error');
-          } else {
-            printTermLine(`Created directory '${args[0]}'`, 'term-success');
-          }
-        }
-        break;
-      }
-
-      case 'touch': {
-        if (args.length === 0) {
-          printTermLine('Usage: touch <filename> [content]', 'term-error');
-        } else {
-          const fileName = args[0];
-          const content = args.slice(1).join(' ');
-          const res = vfs.touch(fileName, content);
-          if (!res.success) {
-            printTermLine(`touch: ${res.error}`, 'term-error');
-          } else {
-            printTermLine(`Created file '${fileName}' (${res.node.size} B)`, 'term-success');
-          }
-        }
-        break;
-      }
-
-      case 'cat': {
-        if (args.length === 0) {
-          printTermLine('Usage: cat <filename>', 'term-error');
-        } else {
-          const res = vfs.cat(args[0]);
-          if (!res.success) {
-            printTermLine(`cat: ${res.error}`, 'term-error');
-          } else {
-            printTermLine(res.content || '(empty file)', 'term-info');
-          }
-        }
-        break;
-      }
-
-      case 'write': {
-        if (args.length < 2) {
-          printTermLine('Usage: write <filename> <content>', 'term-error');
-        } else {
-          const fileName = args[0];
-          const content = args.slice(1).join(' ');
-          const res = vfs.write(fileName, content);
-          if (!res.success) {
-            printTermLine(`write: ${res.error}`, 'term-error');
-          } else {
-            printTermLine(`Updated '${fileName}' (${res.node.size} B)`, 'term-success');
-          }
-        }
-        break;
-      }
-
-      case 'rm': {
-        if (args.length === 0) {
-          printTermLine('Usage: rm <target_name>', 'term-error');
-        } else {
-          const res = vfs.rm(args[0]);
-          if (!res.success) {
-            printTermLine(`rm: ${res.error}`, 'term-error');
-          } else {
-            printTermLine(`Removed '${args[0]}'`, 'term-info');
-          }
-        }
-        break;
-      }
-
-      case 'tree': {
-        const treeStr = vfs.getTreeText();
-        printTermLine(treeStr, 'term-tree-line');
-        break;
-      }
-
-      case 'find': {
-        if (args.length === 0) {
-          printTermLine('Usage: find <name>', 'term-error');
-        } else {
-          const matches = vfs.find(args[0]);
-          if (matches.length === 0) {
-            printTermLine(`find: No items matching '${args[0]}'`, 'term-info');
-          } else {
-            matches.forEach(m => {
-              printTermLine(`Found: ${m.path} [${m.node.type.toUpperCase()}]`, 'term-success');
-            });
-          }
-        }
-        break;
-      }
-
-      case 'history': {
-        const hist = vfs.activityQueue.getAll();
-        printTermLine('--- Activity Queue FIFO History ---', 'term-info');
-        hist.forEach((h, i) => {
-          const timeStr = h.time.toTimeString().split(' ')[0];
-          printTermLine(`[${i + 1}] ${timeStr} -> ${h.action}`);
-        });
-        break;
-      }
-
-      default:
-        printTermLine(`vfs: command not found: ${cmd}. Type 'help' for available commands.`, 'term-error');
-        break;
-    }
-
-    renderAll();
-  }
-
-  // =========================================================================
-  // MODAL HANDLERS
-  // =========================================================================
-
-  function openFileModal(node) {
-    activeEditingFile = node;
-    modalFileName.textContent = node.name;
-    modalFileSize.textContent = `${node.size} bytes`;
-    modalFileCreated.textContent = `Created: ${node.createdAt.toLocaleTimeString()}`;
-    modalFileEditor.value = node.content || '';
-    modalFileViewer.classList.add('show');
-    modalFileEditor.focus();
-  }
-
-  function closeFileModal() {
-    modalFileViewer.classList.remove('show');
-    activeEditingFile = null;
-  }
-
-  function openCreateModal(type) {
-    pendingCreateType = type;
-    modalCreateTitle.textContent = type === 'dir' ? 'Create New Directory (mkdir)' : 'Create New File (touch)';
-    createItemLabel.textContent = type === 'dir' ? 'Directory Name:' : 'File Name:';
-    createItemName.value = '';
-    createItemContent.value = '';
-    createFileContentGroup.style.display = type === 'file' ? 'block' : 'none';
-    modalCreateItem.classList.add('show');
-    createItemName.focus();
-  }
-
-  function closeCreateModal() {
-    modalCreateItem.classList.remove('show');
-  }
-
-  function openGuideModal() {
-    modalGuide.classList.add('show');
-  }
-
-  function closeGuideModal() {
-    modalGuide.classList.remove('show');
-  }
-
-  // =========================================================================
-  // EVENT LISTENERS
-  // =========================================================================
-
-  // Terminal Input Keyboard Navigation
-  terminalInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
-      const val = terminalInput.value;
-      terminalInput.value = '';
-      executeCommand(val);
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault();
-      if (terminalHistory.length > 0 && historyIndex > 0) {
-        historyIndex--;
-        terminalInput.value = terminalHistory[historyIndex];
-      }
-    } else if (e.key === 'ArrowDown') {
-      e.preventDefault();
-      if (historyIndex < terminalHistory.length - 1) {
-        historyIndex++;
-        terminalInput.value = terminalHistory[historyIndex];
+  // BST Search input
+  searchInput.addEventListener('input', () => {
+    const q = searchInput.value.trim();
+    if (q) {
+      btnClearSearch.style.display = 'block';
+      const searchRes = libraryBST.search(q);
+      if (searchRes.found) {
+        searchBstFeedback.innerHTML = `BST Match found in <span class="search-bst-highlight">${searchRes.steps.length} comparison(s)</span>: <em>"${escapeHtml(searchRes.found.title)}"</em>`;
+        renderCatalog([searchRes.found]);
       } else {
-        historyIndex = terminalHistory.length;
-        terminalInput.value = '';
+        searchBstFeedback.innerHTML = `Traversed BST (${searchRes.steps.length} checks) &mdash; <span style="color:var(--accent-rose);">No match</span>`;
+        renderCatalog([]);
       }
-    }
-  });
-
-  // Quick Command Chips
-  document.querySelectorAll('.chip').forEach(chip => {
-    chip.addEventListener('click', () => {
-      const cmd = chip.getAttribute('data-cmd');
-      executeCommand(cmd);
-    });
-  });
-
-  // Terminal Small Buttons
-  document.getElementById('btn-term-clear').addEventListener('click', () => {
-    executeCommand('clear');
-  });
-
-  document.getElementById('btn-term-help').addEventListener('click', () => {
-    executeCommand('help');
-  });
-
-  // Explorer Top Action Buttons
-  document.getElementById('btn-gui-mkdir').addEventListener('click', () => {
-    openCreateModal('dir');
-  });
-
-  document.getElementById('btn-gui-touch').addEventListener('click', () => {
-    openCreateModal('file');
-  });
-
-  document.getElementById('btn-gui-up').addEventListener('click', () => {
-    vfs.cd('..');
-    renderAll();
-  });
-
-  // Header Buttons
-  document.getElementById('btn-quick-sample').addEventListener('click', () => {
-    vfs.root = new FSNode('/', 'dir', null);
-    vfs.current = vfs.root;
-    vfs.activityQueue = new ActivityQueue(20);
-    seedInitialData();
-    printTermLine('Reloaded sample file system hierarchy.', 'term-success');
-    renderAll();
-  });
-
-  btnGuideModal.addEventListener('click', openGuideModal);
-  btnCloseGuideModal.addEventListener('click', closeGuideModal);
-  btnCloseGuideFooter.addEventListener('click', closeGuideModal);
-
-  // File Modal Buttons
-  btnCloseFileModal.addEventListener('click', closeFileModal);
-  btnCancelEdit.addEventListener('click', closeFileModal);
-  btnSaveFile.addEventListener('click', () => {
-    if (activeEditingFile) {
-      activeEditingFile.content = modalFileEditor.value;
-      activeEditingFile.size = new TextEncoder().encode(activeEditingFile.content).length;
-      vfs.activityQueue.enqueue(`write: Updated file '${activeEditingFile.name}' (${activeEditingFile.size} B)`);
-      printTermLine(`Updated '${activeEditingFile.name}' (${activeEditingFile.size} B)`, 'term-success');
-      closeFileModal();
-      renderAll();
-    }
-  });
-
-  // Create Item Modal Buttons
-  btnCloseCreateModal.addEventListener('click', closeCreateModal);
-  btnCancelCreate.addEventListener('click', closeCreateModal);
-  btnConfirmCreate.addEventListener('click', () => {
-    const name = createItemName.value.trim();
-    if (!name) return;
-
-    if (pendingCreateType === 'dir') {
-      const res = vfs.mkdir(name);
-      if (!res.success) {
-        alert(res.error);
-        return;
-      }
-      printTermLine(`mkdir: created '${name}'`, 'term-success');
     } else {
-      const content = createItemContent.value;
-      const res = vfs.touch(name, content);
-      if (!res.success) {
-        alert(res.error);
-        return;
-      }
-      printTermLine(`touch: created '${name}'`, 'term-success');
+      btnClearSearch.style.display = 'none';
+      searchBstFeedback.innerHTML = `<span>Library indexed via Binary Search Tree (O(log N))</span>`;
+      renderCatalog();
     }
-
-    closeCreateModal();
-    renderAll();
   });
 
-  // Visualizer Tabs Switching
+  btnClearSearch.addEventListener('click', () => {
+    searchInput.value = '';
+    btnClearSearch.style.display = 'none';
+    searchBstFeedback.innerHTML = `<span>Library indexed via Binary Search Tree (O(log N))</span>`;
+    renderCatalog();
+  });
+
+  // Tab switching
   const tabButtons = document.querySelectorAll('.tab-btn');
   const tabPanes = document.querySelectorAll('.tab-pane');
 
   tabButtons.forEach(btn => {
     btn.addEventListener('click', () => {
-      const targetTabId = btn.getAttribute('data-tab');
-
+      const targetId = btn.getAttribute('data-tab');
       tabButtons.forEach(b => b.classList.remove('active'));
       tabPanes.forEach(p => p.classList.remove('active'));
 
       btn.classList.add('active');
-      const targetPane = document.getElementById(targetTabId);
-      if (targetPane) targetPane.classList.add('active');
+      const target = document.getElementById(targetId);
+      if (target) target.classList.add('active');
     });
   });
 
-  // Copy C Code button
+  // Modals
+  const modalAddSong = document.getElementById('modal-add-song');
+  const btnAddSongModal = document.getElementById('btn-add-song-modal');
+  const btnCloseAddModal = document.getElementById('btn-close-add-modal');
+  const btnCancelAdd = document.getElementById('btn-cancel-add');
+  const btnConfirmAdd = document.getElementById('btn-confirm-add');
+
+  const inputSongTitle = document.getElementById('input-song-title');
+  const inputSongArtist = document.getElementById('input-song-artist');
+  const inputSongGenre = document.getElementById('input-song-genre');
+  const inputSongDuration = document.getElementById('input-song-duration');
+  const selectAddDest = document.getElementById('select-add-dest');
+
+  btnAddSongModal.addEventListener('click', () => {
+    modalAddSong.classList.add('show');
+    inputSongTitle.focus();
+  });
+
+  function closeAddModal() {
+    modalAddSong.classList.remove('show');
+  }
+
+  btnCloseAddModal.addEventListener('click', closeAddModal);
+  btnCancelAdd.addEventListener('click', closeAddModal);
+
+  btnConfirmAdd.addEventListener('click', () => {
+    const title = inputSongTitle.value.trim();
+    const artist = inputSongArtist.value.trim() || 'Unknown Artist';
+    const genre = inputSongGenre.value.trim() || 'Custom';
+    const dur = parseInt(inputSongDuration.value, 10) || 180;
+    const dest = selectAddDest.value;
+
+    if (!title) {
+      alert('Please enter a song title.');
+      return;
+    }
+
+    const newSong = new Song(Date.now() % 10000, title, artist, dur, genre, 400 + Math.random() * 200);
+
+    // Always insert into BST
+    libraryBST.insert(newSong);
+
+    if (dest === 'playlist') {
+      playlist.insertEnd(newSong);
+    } else if (dest === 'queue') {
+      upNextQueue.enqueue(newSong);
+    }
+
+    inputSongTitle.value = '';
+    closeAddModal();
+    renderAll();
+  });
+
+  // Guide Modal
+  const modalGuide = document.getElementById('modal-guide');
+  const btnGuideModal = document.getElementById('btn-guide-modal');
+  const btnCloseGuideModal = document.getElementById('btn-close-guide-modal');
+  const btnCloseGuideFooter = document.getElementById('btn-close-guide-footer');
+
+  btnGuideModal.addEventListener('click', () => modalGuide.classList.add('show'));
+  btnCloseGuideModal.addEventListener('click', () => modalGuide.classList.remove('show'));
+  btnCloseGuideFooter.addEventListener('click', () => modalGuide.classList.remove('show'));
+
+  // Copy C Code Button
   document.getElementById('btn-copy-c-code').addEventListener('click', () => {
     const code = document.getElementById('c-code-display').textContent;
     navigator.clipboard.writeText(code).then(() => {
@@ -1077,7 +936,14 @@ Type 'help' to see all shell commands or try the quick buttons below.
     });
   });
 
-  // Helper utility
+  // Format seconds to mm:ss
+  function formatTime(sec) {
+    sec = Math.floor(sec || 0);
+    const m = Math.floor(sec / 60);
+    const s = sec % 60;
+    return `${m}:${s < 10 ? '0' : ''}${s}`;
+  }
+
   function escapeHtml(str) {
     if (!str) return '';
     return str
@@ -1089,11 +955,10 @@ Type 'help' to see all shell commands or try the quick buttons below.
   }
 
   // =========================================================================
-  // INITIALIZATION
+  // 7. INITIALIZATION
   // =========================================================================
 
-  seedInitialData();
-  printWelcomeBanner();
+  loadSampleCatalog();
   renderAll();
 
 })();

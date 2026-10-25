@@ -3,28 +3,28 @@ CC = gcc
 CFLAGS = -Wall -Wextra -std=c99 -O2
 
 # Targets
-all: vfs test
+all: tunestream test
 
-vfs: main.o vfs.o
-	$(CC) $(CFLAGS) -o vfs main.o vfs.o
+tunestream: main.o music_player.o
+	$(CC) $(CFLAGS) -o tunestream main.o music_player.o
 
-test: test_vfs.o vfs.o
-	$(CC) $(CFLAGS) -o test_runner test_vfs.o vfs.o
+test: test_player.o music_player.o
+	$(CC) $(CFLAGS) -o test_runner test_player.o music_player.o
 
-main.o: main.c vfs.h
+main.o: main.c music_player.h
 	$(CC) $(CFLAGS) -c main.c
 
-vfs.o: vfs.c vfs.h
-	$(CC) $(CFLAGS) -c vfs.c
+music_player.o: music_player.c music_player.h
+	$(CC) $(CFLAGS) -c music_player.c
 
-test_vfs.o: test_vfs.c vfs.h
-	$(CC) $(CFLAGS) -c test_vfs.c
+test_player.o: test_player.c music_player.h
+	$(CC) $(CFLAGS) -c test_player.c
 
 clean:
-	rm -f *.o vfs test_runner vfs.exe test_runner.exe
+	rm -f *.o tunestream test_runner tunestream.exe test_runner.exe
 
-run: vfs
-	./vfs
+run: tunestream
+	./tunestream
 
 check: test
 	./test_runner

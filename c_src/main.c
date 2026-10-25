@@ -1,159 +1,208 @@
-#include "vfs.h"
+#include "music_player.h"
 
 static void print_banner(void) {
     printf("=================================================================\n");
-    printf("   VIRTUAL FILE SYSTEM (VFS) - DATA STRUCTURES PROJECT IN C      \n");
+    printf("    TUNESTREAM: C MUSIC STREAMING & PLAYLIST ENGINE (DSA)        \n");
     printf("=================================================================\n");
     printf(" Data Structures Implemented:\n");
-    printf("  1. N-ary Tree (Left-Child Right-Sibling representation)\n");
-    printf("  2. Stack (Used for path resolution & 'pwd' backtracking)\n");
-    printf("  3. Queue (Used for chronological command history FIFO)\n");
-    printf("=================================================================\n");
-    printf(" Type 'help' to see available shell commands.\n\n");
+    printf("  1. Doubly Linked List  -> Active Playlist (O(1) Next/Prev)\n");
+    printf("  2. FIFO Queue          -> 'Up Next' Play Queue (First-In, First-Out)\n");
+    printf("  3. LIFO Stack          -> Recently Played History (Undo/Back)\n");
+    printf("  4. Binary Search Tree  -> Music Catalog & Fast Search (O(log N))\n");
+    printf("=================================================================\n\n");
 }
 
-static void print_help(void) {
-    printf("\nAvailable Commands:\n");
-    printf("  mkdir <name>           Create a new directory in the current folder\n");
-    printf("  touch <name> [text]    Create a new file with optional content\n");
-    printf("  cat <name>             Display contents of a file\n");
-    printf("  write <name> <text>    Overwrite/update content of an existing file\n");
-    printf("  ls [-l]                List files and directories in current folder\n");
-    printf("  cd <path>              Change current directory ('..', '/', 'folder')\n");
-    printf("  pwd                    Print current working directory path (via Stack)\n");
-    printf("  tree                   Display hierarchical tree diagram of file system\n");
-    printf("  find <name>            Search for a file or folder recursively (DFS)\n");
-    printf("  rm <name>              Remove a file or folder recursively\n");
-    printf("  history                View recent operations log (FIFO Queue)\n");
-    printf("  help                   Display this help menu\n");
-    printf("  clear                  Clear the terminal screen\n");
-    printf("  exit                   Quit the program\n\n");
+static void print_menu(const MusicEngine *engine) {
+    char dur_str[16] = "--:--";
+    Song *curr = playlist_get_current((Playlist*)&engine->playlist);
+    if (curr) {
+        format_duration(curr->duration_sec, dur_str, sizeof(dur_str));
+    }
+
+    printf("\n-----------------------------------------------------------------\n");
+    if (curr && engine->is_playing) {
+        printf(" ▶ NOW PLAYING: \"%s\" by %s [%s | %s]\n", curr->title, curr->artist, dur_str, curr->genre);
+    } else if (curr) {
+        printf(" ⏸ PAUSED: \"%s\" by %s [%s | %s]\n", curr->title, curr->artist, dur_str, curr->genre);
+    } else {
+        printf(" ⏹ NO TRACK SELECTED\n");
+    }
+    printf(" Status: [Repeat: %s] | [Queue: %d songs] | [History: %d songs]\n",
+           engine->is_repeat ? "ON" : "OFF",
+           engine->up_next_queue.count,
+           engine->history_stack.count);
+    printf("-----------------------------------------------------------------\n");
+    printf(" 1. Play / Pause\n");
+    printf(" 2. Next Track (Queue FIFO -> DLL Next -> Stack Push)\n");
+    printf(" 3. Previous Track (Stack Pop / DLL Prev)\n");
+    printf(" 4. View Active Playlist (Doubly Linked List)\n");
+    printf(" 5. View 'Up Next' Play Queue (FIFO)\n");
+    printf(" 6. View Playback History (LIFO Stack)\n");
+    printf(" 7. Search Library Catalog (Binary Search Tree - O(log N))\n");
+    printf(" 8. Add Song to 'Up Next' Queue\n");
+    printf(" 9. Add Song to Playlist (DLL Insertion)\n");
+    printf("10. Remove Song from Playlist (DLL Deletion)\n");
+    printf("11. Toggle Repeat\n");
+    printf(" 0. Exit\n");
+    printf("Select option [0-11]: ");
 }
 
 int main(void) {
-    VirtualFileSystem *vfs = vfs_init();
-    if (!vfs) {
-        fprintf(stderr, "Failed to initialize Virtual File System.\n");
+    MusicEngine *engine = engine_create();
+    if (!engine) {
+        fprintf(stderr, "Failed to allocate MusicEngine.\n");
         return 1;
     }
 
-    /* Seed some initial demonstration folders and files */
-    vfs_mkdir(vfs, "home");
-    vfs_mkdir(vfs, "bin");
-    vfs_mkdir(vfs, "etc");
-    vfs_touch(vfs, "README.txt", "Welcome to the C Virtual File System project!");
-
-    vfs_cd(vfs, "home");
-    vfs_mkdir(vfs, "student");
-    vfs_cd(vfs, "student");
-    vfs_touch(vfs, "notes.txt", "DSA is fun! Trees, Stacks, Queues, and Pointers.");
-    vfs_mkdir(vfs, "projects");
-    vfs_cd(vfs, "/");
+    engine_load_sample_data(engine);
+    engine->is_playing = true;
 
     print_banner();
 
-    char line[1024];
-    char pwd_buf[MAX_PATH_LEN];
+    int choice;
+    char buffer[128];
 
     while (1) {
-        vfs_pwd(vfs, pwd_buf, sizeof(pwd_buf));
-        printf("\033[1;32mvfs-user@dsa-c\033[0m:\033[1;34m%s\033[0m$ ", pwd_buf);
-        fflush(stdout);
+        print_menu(engine);
+        if (scanf("%d", &choice) != 1) {
+            /* Clear stdin */
+            while (getchar() != '\n');
+            continue;
+        }
+        while (getchar() != '\n'); /* Flush newline */
 
-        if (!fgets(line, sizeof(line), stdin)) {
+        if (choice == 0) {
+            printf("\nExiting TuneStream. Freeing dynamic memory...\n");
             break;
         }
 
-        /* Strip trailing newline */
-        line[strcspn(line, "\r\n")] = '\0';
-        if (strlen(line) == 0) continue;
+        switch (choice) {
+            case 1:
+                engine->is_playing = !engine->is_playing;
+                printf("\nStatus: %s\n", engine->is_playing ? "▶ PLAYING" : "⏸ PAUSED");
+                break;
 
-        char *cmd = strtok(line, " ");
-        if (!cmd) continue;
-
-        if (strcmp(cmd, "exit") == 0 || strcmp(cmd, "quit") == 0) {
-            printf("Exiting VFS. Cleaning up dynamic memory...\n");
-            break;
-        } else if (strcmp(cmd, "help") == 0) {
-            print_help();
-        } else if (strcmp(cmd, "clear") == 0) {
-            printf("\033[H\033[J");
-        } else if (strcmp(cmd, "pwd") == 0) {
-            printf("%s\n", pwd_buf);
-        } else if (strcmp(cmd, "ls") == 0) {
-            char *arg = strtok(NULL, " ");
-            bool detailed = (arg && strcmp(arg, "-l") == 0);
-            vfs_ls(vfs, detailed);
-        } else if (strcmp(cmd, "mkdir") == 0) {
-            char *dir_name = strtok(NULL, " ");
-            if (!dir_name) {
-                printf("Usage: mkdir <directory_name>\n");
-            } else {
-                vfs_mkdir(vfs, dir_name);
-            }
-        } else if (strcmp(cmd, "touch") == 0) {
-            char *file_name = strtok(NULL, " ");
-            if (!file_name) {
-                printf("Usage: touch <file_name> [optional_content]\n");
-            } else {
-                char *content = strtok(NULL, ""); /* Get remainder of line */
-                vfs_touch(vfs, file_name, content ? content : "");
-            }
-        } else if (strcmp(cmd, "cat") == 0) {
-            char *file_name = strtok(NULL, " ");
-            if (!file_name) {
-                printf("Usage: cat <file_name>\n");
-            } else {
-                char *content = vfs_cat(vfs, file_name);
-                if (content) {
-                    printf("%s\n", content);
+            case 2: {
+                Song *next = playlist_play_next(engine);
+                if (next) {
+                    char d[16];
+                    format_duration(next->duration_sec, d, sizeof(d));
+                    printf("\nSkipped to: \"%s\" by %s [%s]\n", next->title, next->artist, d);
                 }
+                break;
             }
-        } else if (strcmp(cmd, "write") == 0) {
-            char *file_name = strtok(NULL, " ");
-            char *content = strtok(NULL, "");
-            if (!file_name || !content) {
-                printf("Usage: write <file_name> <text_to_write>\n");
-            } else {
-                vfs_write(vfs, file_name, content);
-            }
-        } else if (strcmp(cmd, "cd") == 0) {
-            char *path = strtok(NULL, " ");
-            if (!path) {
-                vfs_cd(vfs, "/");
-            } else {
-                vfs_cd(vfs, path);
-            }
-        } else if (strcmp(cmd, "rm") == 0) {
-            char *target = strtok(NULL, " ");
-            if (!target) {
-                printf("Usage: rm <target_name>\n");
-            } else {
-                vfs_rm(vfs, target);
-            }
-        } else if (strcmp(cmd, "tree") == 0) {
-            printf(".\n");
-            vfs_tree(vfs->root, 0, true, "");
-        } else if (strcmp(cmd, "find") == 0) {
-            char *target = strtok(NULL, " ");
-            if (!target) {
-                printf("Usage: find <name>\n");
-            } else {
-                FSNode *found = vfs_find(vfs->root, target);
-                if (found) {
-                    printf("Found: %s [%s]\n", found->name, found->type == NODE_DIR ? "DIR" : "FILE");
+
+            case 3: {
+                Song *prev = playlist_play_prev(engine);
+                if (prev) {
+                    char d[16];
+                    format_duration(prev->duration_sec, d, sizeof(d));
+                    printf("\nReturned to: \"%s\" by %s [%s]\n", prev->title, prev->artist, d);
                 } else {
-                    printf("Item '%s' not found in file system.\n", target);
+                    printf("\nNo previous song available.\n");
                 }
+                break;
             }
-        } else if (strcmp(cmd, "history") == 0) {
-            queue_display(&vfs->activity_log);
-        } else {
-            printf("vfs: command not found: %s. Type 'help' for available commands.\n", cmd);
+
+            case 4:
+                playlist_display(&engine->playlist);
+                break;
+
+            case 5:
+                queue_display(&engine->up_next_queue);
+                break;
+
+            case 6:
+                stack_display(&engine->history_stack);
+                break;
+
+            case 7: {
+                printf("\nEnter song title to search (BST): ");
+                if (fgets(buffer, sizeof(buffer), stdin)) {
+                    buffer[strcspn(buffer, "\r\n")] = '\0';
+                    BSTNode *res = bst_search(engine->library_bst.root, buffer);
+                    if (res) {
+                        char d[16];
+                        format_duration(res->song.duration_sec, d, sizeof(d));
+                        printf("\n✓ FOUND in BST (O(log N)):\n");
+                        printf("   Title:    %s\n", res->song.title);
+                        printf("   Artist:   %s\n", res->song.artist);
+                        printf("   Duration: %s\n", d);
+                        printf("   Genre:    %s\n", res->song.genre);
+                    } else {
+                        printf("\n✗ Song '%s' not found in library catalog.\n", buffer);
+                    }
+                }
+                break;
+            }
+
+            case 8: {
+                printf("\nEnter song title: ");
+                char title[64], artist[64], genre[32];
+                int dur = 180;
+                if (fgets(title, sizeof(title), stdin)) {
+                    title[strcspn(title, "\r\n")] = '\0';
+                    printf("Enter artist: ");
+                    if (fgets(artist, sizeof(artist), stdin)) {
+                        artist[strcspn(artist, "\r\n")] = '\0';
+                        printf("Enter genre: ");
+                        if (fgets(genre, sizeof(genre), stdin)) {
+                            genre[strcspn(genre, "\r\n")] = '\0';
+                            Song new_song = create_song(rand() % 1000 + 10, title, artist, dur, genre);
+                            queue_enqueue(&engine->up_next_queue, new_song);
+                            printf("\nEnqueued \"%s\" into FIFO Up Next queue!\n", title);
+                        }
+                    }
+                }
+                break;
+            }
+
+            case 9: {
+                printf("\nEnter song title: ");
+                char title[64], artist[64], genre[32];
+                int dur = 200;
+                if (fgets(title, sizeof(title), stdin)) {
+                    title[strcspn(title, "\r\n")] = '\0';
+                    printf("Enter artist: ");
+                    if (fgets(artist, sizeof(artist), stdin)) {
+                        artist[strcspn(artist, "\r\n")] = '\0';
+                        printf("Enter genre: ");
+                        if (fgets(genre, sizeof(genre), stdin)) {
+                            genre[strcspn(genre, "\r\n")] = '\0';
+                            Song new_song = create_song(rand() % 1000 + 10, title, artist, dur, genre);
+                            playlist_insert_end(&engine->playlist, new_song);
+                            printf("\nAppended \"%s\" to active Doubly Linked List playlist!\n", title);
+                        }
+                    }
+                }
+                break;
+            }
+
+            case 10: {
+                int id;
+                printf("\nEnter Song ID to remove from playlist: ");
+                if (scanf("%d", &id) == 1) {
+                    if (playlist_remove(&engine->playlist, id)) {
+                        printf("\nRemoved song ID %d from Doubly Linked List.\n", id);
+                    } else {
+                        printf("\nSong ID %d not found in playlist.\n", id);
+                    }
+                }
+                break;
+            }
+
+            case 11:
+                engine->is_repeat = !engine->is_repeat;
+                printf("\nRepeat mode: %s\n", engine->is_repeat ? "ENABLED" : "DISABLED");
+                break;
+
+            default:
+                printf("\nInvalid option. Try again.\n");
+                break;
         }
     }
 
-    vfs_free(vfs);
-    printf("Memory freed successfully. Goodbye!\n");
+    engine_free(engine);
+    printf("Memory freed successfully. Have a great day!\n");
     return 0;
 }

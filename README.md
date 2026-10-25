@@ -1,144 +1,131 @@
-# Virtual File System (VFS) & Data Structures Visualizer
+# TuneStream: Music Streaming & Play Queue Manager
 
-> An interactive in-memory **Virtual File System** built in **C** with a live, modern web visualizer that you can run locally and deploy directly to **GitHub Pages**.
+> A real-world **Music Streaming and Play Queue Manager** built from scratch in **C**, featuring a live, interactive web application deployable directly to **GitHub Pages**.
 
-![Project Status](https://img.shields.io/badge/Language-C%20(ANSI%20C99)-blue)
+![Language](https://img.shields.io/badge/Language-C%20(ANSI%20C99)-blue)
 ![Frontend](https://img.shields.io/badge/Frontend-HTML5%20%7C%20Vanilla%20CSS%20%7C%20JavaScript-emerald)
 ![Deployment](https://img.shields.io/badge/Deployment-GitHub%20Pages%20Ready-cyan)
-![Data Structures](https://img.shields.io/badge/DSA-Tree%20%7C%20Stack%20%7C%20Queue-purple)
+![Data Structures](https://img.shields.io/badge/DSA-DLL%20%7C%20Queue%20%7C%20Stack%20%7C%20BST-purple)
 
 ---
 
-## 📌 Project Overview & Real-World Motivation
+## 📌 Real-World Problem & Motivation
 
-Every modern operating system (Linux, macOS, Windows) organizes files into a hierarchical directory tree. In an OS kernel, this abstraction is handled by a **Virtual File System (VFS)**.
+Modern music streaming platforms like **Spotify**, **Apple Music**, and **YouTube Music** need to manage playback queues, recently played history, and library search with sub-millisecond responsiveness.
 
-This project implements an in-memory VFS from scratch in **C**, demonstrating the power and elegance of 3 foundational data structures:
-1. **N-ary Tree (Left-Child Right-Sibling representation)**: Handles the hierarchical folders and files.
-2. **Linked-List Stack (LIFO)**: Resolves current working directory paths (`pwd`) and backtracks parent levels (`cd ..`).
-3. **Circular / Linked-List Queue (FIFO)**: Records an operation audit log of filesystem activities (`mkdir`, `touch`, `rm`, `write`).
-
-It includes both:
-- **A Pure C Engine (`c_src/`)**: Compiles with GCC/Clang on Windows, Linux, and macOS with an interactive CLI shell and automated unit test runner.
-- **A Modern Web Application (`index.html`, `style.css`, `app.js`)**: A live interactive graphical file explorer, terminal simulator, and real-time visualizer showing the node pointers, stack frames, and queue states.
+This project implements an end-to-end music player engine using **4 foundational Data Structures**:
+1. **Doubly Linked List**: Represents the active **Playlist** with bi-directional pointer navigation (`prev` and `next`).
+2. **FIFO Queue**: Represents the **"Up Next" Play Queue** where user-queued songs take priority in First-In, First-Out order.
+3. **LIFO Stack**: Represents **Playback History** where finished songs are pushed, and clicking "Previous" pops the most recent track.
+4. **Binary Search Tree (BST)**: Indexes the entire **Song Catalog** alphabetically for fast $O(\log N)$ search queries.
 
 ---
 
 ## 🏗️ Data Structures Architecture in C
 
-### 1. N-ary Tree (Left-Child Right-Sibling Binary Representation)
-An N-ary tree allows each folder to contain any number of subfolders or files. Rather than using fixed-size arrays that waste memory, we use the textbook **Left-Child Right-Sibling (LCRS)** representation:
+### 1. Doubly Linked List (Active Playlist)
+Every song in the playlist is a node holding pointers to both its predecessor (`prev`) and successor (`next`):
 
 ```
-          / (root)
-          │
-      firstChild
-          ▼
-       [home] ───nextSibling───► [etc] ───nextSibling───► [bin]
-          │
-      firstChild
-          ▼
-      [student]
-          │
-      firstChild
-          ▼
-      [notes.txt] ───nextSibling───► [projects]
+NULL ◄── [prev | Song 1 | next] ◄──► [prev | Song 2 | next] ◄──► [prev | Song 3 | next] ──► NULL
+                  ▲
+                  │
+             current node
 ```
 
-#### C Definition (`c_src/vfs.h`):
+* **Advantage**: Moving to the next or previous track requires only reading `current->next` or `current->prev` in **$O(1)$ constant time** with zero memory shifting.
+
+#### C Definition (`c_src/music_player.h`):
 ```c
-typedef enum {
-    NODE_DIR,
-    NODE_FILE
-} NodeType;
-
-typedef struct FSNode {
-    char name[64];
-    NodeType type;
-    char *content;              /* Text content for files, NULL for dirs */
-    size_t size;                /* Size in bytes */
-    time_t created_at;
-
-    struct FSNode *parent;      /* Pointer to parent node */
-    struct FSNode *firstChild;  /* Pointer to first child node */
-    struct FSNode *nextSibling; /* Pointer to next sibling at same level */
-} FSNode;
-```
-
----
-
-### 2. Path Stack (LIFO)
-When navigating directories with `cd path` or checking the current path with `pwd`, the path must be printed from root `/` to the current leaf folder. By following `parent` pointers up to `root` and **pushing** each node onto a **Stack**, we can **pop** them in reverse order to print the absolute path `/home/student/projects` in $O(D)$ time (where $D$ is directory depth).
-
-```c
-typedef struct StackNode {
-    FSNode *node;
-    struct StackNode *next;
-} StackNode;
+typedef struct SongNode {
+    Song song;
+    struct SongNode *prev; /* O(1) bi-directional pointer */
+    struct SongNode *next; /* O(1) bi-directional pointer */
+} SongNode;
 
 typedef struct {
-    StackNode *top;
-    int size;
-} PathStack;
-```
-
----
-
-### 3. Activity Queue (FIFO)
-Maintains an in-memory chronological history of operations. Operations are **enqueued** at the rear and, when capacity is reached, the oldest action is **dequeued** from the front.
-
-```c
-typedef struct QueueNode {
-    char action[128];
-    time_t timestamp;
-    struct QueueNode *next;
-} QueueNode;
-
-typedef struct {
-    QueueNode *front;
-    QueueNode *rear;
+    SongNode *head;
+    SongNode *tail;
+    SongNode *current;
     int count;
-} ActivityQueue;
+} Playlist;
 ```
+
+---
+
+### 2. FIFO Queue ("Up Next" Play Queue)
+When a user adds songs to play next, they are enqueued into a First-In, First-Out (FIFO) singly-linked queue.
+
+```
+Enqueue (Rear) ──► [Song C] ──► [Song B] ──► [Song A] ──► Dequeue (Front / Next to Play)
+```
+
+* **Playback Priority**: When the current song finishes or the user clicks "Next", the engine checks if the queue has items. If yes, it dequeues from the front and plays it first before continuing the playlist!
+
+---
+
+### 3. LIFO Stack (Playback History)
+Every time a song finishes or skips, the previous song is pushed onto a Last-In, First-Out (LIFO) stack.
+
+```
+       ┌────────────────────────┐
+ TOP   │ Song 3 (Most Recent)   │  ◄── Pop on "Previous Track"
+       ├────────────────────────┤
+       │ Song 2                 │
+       ├────────────────────────┤
+       │ Song 1 (Oldest)        │
+       └────────────────────────┘
+```
+
+---
+
+### 4. Binary Search Tree (Library Search)
+The song catalog is organized in a Binary Search Tree sorted alphabetically by song title:
+
+```
+                  [Save Your Tears]
+                   /             \
+       [Blinding Lights]         [Starboy]
+         /            \             \
+     [As It Was]   [Levitating]    [Stay]
+```
+
+* **Advantage**: Searching for any track takes **$O(\log N)$** time by comparing titles alphabetically.
 
 ---
 
 ## ⏱️ Time & Space Complexity Analysis
 
-| Operation | Data Structure Used | Time Complexity | Space Complexity |
-| :--- | :--- | :--- | :--- |
-| **`mkdir <name>`** | N-ary Tree (Sibling Append) | $O(K)$ children | $O(1)$ |
-| **`touch <name>`** | N-ary Tree (File Node Alloc) | $O(K)$ children | $O(1)$ |
-| **`cd <dir>`** | Child Pointer Traversal | $O(K)$ children | $O(1)$ |
-| **`pwd`** | PathStack (Push / Pop) | $O(D)$ depth | $O(D)$ |
-| **`tree`** | Pre-Order Recursive Traversal (DFS) | $O(N)$ total nodes | $O(D)$ call stack |
-| **`find <name>`** | Recursive Subtree Search (DFS) | $O(N)$ total nodes | $O(D)$ call stack |
-| **`rm <name>`** | Pointer Unlink & Recursive Free | $O(K + M)$ subtree | $O(D)$ |
-| **`history`** | FIFO ActivityQueue | $O(1)$ enqueue/dequeue | $O(C)$ capacity |
+| Operation | Action | Data Structure Used | Time Complexity | Space Complexity |
+| :--- | :--- | :--- | :--- | :--- |
+| **Next Track** | Advance playback | Doubly Linked List (`current->next`) | $O(1)$ | $O(1)$ |
+| **Prev Track** | Go back | LIFO Stack (`pop`) / DLL (`prev`) | $O(1)$ | $O(1)$ |
+| **Add to Playlist** | Insert track | Doubly Linked List (`tail->next`) | $O(1)$ | $O(1)$ |
+| **Remove from Playlist** | Delete track | Doubly Linked List pointer unlinking | $O(1)$ | $O(1)$ |
+| **Add to Up Next** | Queue song | FIFO Queue (`enqueue` at rear) | $O(1)$ | $O(1)$ |
+| **Play Queued Song** | Dequeue song | FIFO Queue (`dequeue` from front) | $O(1)$ | $O(1)$ |
+| **Catalog Search** | Search by title | Binary Search Tree (BST Traversal) | $O(\log N)$ | $O(1)$ |
+| **Sorted Catalog List** | In-order display | Binary Search Tree (In-order DFS) | $O(N)$ | $O(H)$ stack |
 
 ---
 
-## 💻 Running the Pure C Project Locally
+## 💻 Running the Pure C Version on Your Computer
 
 ### Prerequisites
-A C compiler like `gcc` or `clang` and `make`.
+A standard C compiler (`gcc` or `clang`) and `make`.
 
-### Compilation & Execution
-Open your terminal in the project directory:
+### Compilation & Interactive CLI
+Navigate into the `c_src/` folder:
 
 ```bash
-# Navigate into C source directory
 cd c_src
 
-# Build the interactive CLI shell
-make
-
-# Run the Virtual File System shell
+# Compile and start the interactive CLI player
 make run
 ```
 
 ### Running Automated Unit Tests
-To verify all tree insertions, deletions, stack pushes/pops, and queue operations:
+To verify all operations of the Doubly Linked List, Queue, Stack, and BST:
 
 ```bash
 make check
@@ -146,44 +133,42 @@ make check
 
 ---
 
-## 🚀 How to Deploy to GitHub Pages (Live on the Web)
+## 🚀 How to Deploy Live to GitHub Pages (2 Minutes)
 
-Because this repository contains static web files (`index.html`, `style.css`, `app.js`), you can host it live on GitHub Pages with **zero hosting costs**:
+All static files (`index.html`, `style.css`, `app.js`) are ready in the root directory. Follow these simple steps:
 
 ### Step 1: Create a GitHub Repository
 1. Go to [github.com/new](https://github.com/new).
-2. Repository name: `c-virtual-file-system`.
+2. Name your repo: `tunestream-music-player`.
 3. Set visibility to **Public**.
-4. Leave *Add README* and *Add .gitignore* unchecked (since this repo already has them).
+4. Leave *Add README* and *Add .gitignore* unchecked.
 5. Click **Create repository**.
 
-### Step 2: Push your Code from your Computer
-Run the following commands in this project folder:
+### Step 2: Push Your Code
+Open your terminal inside this project folder and run:
 
 ```bash
-git init
 git add .
-git commit -m "Initial commit: C Virtual File System & Data Structures Web App"
+git commit -m "TuneStream: Music Streaming & Play Queue Manager in C"
 git branch -M main
-git remote add origin https://github.com/YOUR_USERNAME/c-virtual-file-system.git
+git remote add origin https://github.com/YOUR_USERNAME/tunestream-music-player.git
 git push -u origin main
 ```
 *(Replace `YOUR_USERNAME` with your actual GitHub username).*
 
 ### Step 3: Enable GitHub Pages
-1. On your GitHub repo page, click **Settings** (top tab).
-2. On the left sidebar, click **Pages**.
+1. Go to your repository on GitHub &rarr; click **Settings** (top tab).
+2. Click **Pages** (on the left menu under *Code and automation*).
 3. Under **Build and deployment**:
    - Source: **Deploy from a branch**
-   - Branch: Select **main** and folder **/(root)**
+   - Branch: Select **`main`** and folder **`/(root)`**
 4. Click **Save**.
 
-### Step 4: Access your Live App!
-In about 30–60 seconds, GitHub will generate your live URL:
+### Step 4: Your App is Live!
+In ~30 seconds, your project will be live at:
 ```
-https://YOUR_USERNAME.github.io/c-virtual-file-system/
+https://YOUR_USERNAME.github.io/tunestream-music-player/
 ```
-You can share this link with your professor, classmates, or include it in your project report and resume!
 
 ---
 
@@ -191,35 +176,15 @@ You can share this link with your professor, classmates, or include it in your p
 
 ```
 DSA Project/
-├── index.html           # Web Application UI (GitHub Pages Entry Point)
-├── style.css            # Modern glassmorphism dark-mode styling
-├── app.js               # Full JavaScript engine simulating C Data Structures
-├── .gitignore           # Git ignore rules for C binaries and system files
-├── README.md            # Comprehensive documentation & presentation guide
+├── index.html           # Web App UI (Spotify-tier interactive player)
+├── style.css            # Modern glassmorphism dark theme with audio waves
+├── app.js               # Browser simulation of C Data Structures & Web Audio
+├── README.md            # Comprehensive documentation & viva guide
+├── .gitignore           # Git ignore file for C binaries
 └── c_src/               # Pure C Codebase (For evaluation & submission)
-    ├── vfs.h            # Header file (FSNode, PathStack, ActivityQueue structs)
-    ├── vfs.c            # Data structure algorithms & pointer manipulations
-    ├── main.c           # Interactive C CLI terminal program
-    ├── test_vfs.c       # Automated unit test suite verifying DSA logic
-    └── Makefile         # Build rules for gcc
+    ├── music_player.h   # Structs for DLL, Queue, Stack, and BST
+    ├── music_player.c   # Algorithms and dynamic memory management in C
+    ├── main.c           # Interactive CLI menu driver
+    ├── test_player.c    # Automated unit test suite verifying all 4 structures
+    └── Makefile         # GCC compilation rules
 ```
-
----
-
-## 📝 Shell Commands Reference
-
-| Command | Syntax | Description |
-| :--- | :--- | :--- |
-| `mkdir` | `mkdir <name>` | Create a new directory under current directory |
-| `touch` | `touch <name> [text]` | Create a new file with optional content |
-| `cat` | `cat <filename>` | Display text contents of a file |
-| `write` | `write <filename> <text>` | Overwrite content of an existing file |
-| `ls` | `ls [-l]` | List contents (supports detailed `-l` mode) |
-| `cd` | `cd <path>` | Navigate directories (`..`, `/`, subpaths) |
-| `pwd` | `pwd` | Print working directory using Stack |
-| `tree` | `tree` | Visual hierarchical ASCII tree |
-| `find` | `find <query>` | Recursive search for files/folders |
-| `rm` | `rm <name>` | Delete file or recursive directory |
-| `history` | `history` | Print FIFO operations audit queue |
-| `clear` | `clear` | Clear terminal display |
-| `help` | `help` | Show command reference |
